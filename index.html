@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเช็คสแกนนิ้ว ZKTIME 5.0 (เวลาไทย & สรุปรายวัน)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (xlsx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Google Fonts (Kanit) -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kanit', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-fingerprint text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+                        ZKTIME 5.0 Attendance
+                    </h1>
+                    <p class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <i class="fa-regular fa-clock text-cyan-400"></i>
+                        <span id="thaiClock">กำลังโหลดเวลาไทย...</span>
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <button onclick="exportToExcel()" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs px-3 py-2 rounded-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-file-excel"></i> <span class="hidden sm:inline">ส่งออกรายงาน</span>
+                </button>
+                <button onclick="clearHistory()" class="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 text-xs px-3 py-2 rounded-lg border border-rose-500/30 transition flex items-center gap-2">
+                    <i class="fa-solid fa-trash"></i> <span class="hidden sm:inline">ล้างประวัติ</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Upload & Config -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- File Drag & Drop Upload -->
+            <div class="lg:col-span-2 bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 shadow-xl relative overflow-hidden group">
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition"></div>
+                <h2 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-file-import text-emerald-400"></i> นำเข้าไฟล์ Excel จาก ZKTIME 5.0
+                </h2>
+                
+                <div id="dropZone" class="border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer bg-slate-900/40 hover:bg-slate-900/80 transition group/drop">
+                    <input type="file" id="excelFile" accept=".xlsx, .xls" class="hidden" onchange="handleFileSelect(event)">
+                    <div class="space-y-2">
+                        <div class="w-12 h-12 mx-auto bg-indigo-600/20 text-indigo-400 rounded-full flex items-center justify-center group-hover/drop:scale-110 transition">
+                            <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs sm:text-sm font-medium text-slate-200">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์ Excel มาวางที่นี่</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">รองรับไฟล์ .xlsx และ .xls จาก ZKTime 5.0 ย้อนหลังได้หลายไฟล์</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Card -->
+            <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-cyan-400"></i> เงื่อนไขการสแกนซ้ำ
+                    </h2>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">ระยะเวลาสแกนซ้ำ (นาที)</label>
+                            <input type="number" id="dupInterval" value="5" min="1" max="120" 
+                                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <p class="text-[11px] text-slate-400 mt-1">หากพนักงานคนเดิมสแกนนิ้วซ้ำภายในเวลาที่กำหนด ระบบจะระบุว่า "สแกนซ้ำ"</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-slate-700/50">
+                    <p class="text-[11px] text-slate-400">ข้อมูลสแกนทั้งหมดจะถูกบันทึกไว้ในเบราว์เซอร์อัตโนมัติ</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overall Statistics -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl">
+                <p class="text-xs text-slate-400">รายการสแกนทั้งหมด</p>
+                <p class="text-2xl font-bold text-slate-100 mt-1" id="statTotal">0</p>
+            </div>
+            <div class="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl">
+                <p class="text-xs text-slate-400">สแกนปกติ</p>
+                <p class="text-2xl font-bold text-emerald-400 mt-1" id="statNormal">0</p>
+            </div>
+            <div class="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl">
+                <p class="text-xs text-slate-400">สแกนซ้ำ</p>
+                <p class="text-2xl font-bold text-rose-400 mt-1" id="statDuplicate">0</p>
+            </div>
+            <div class="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl">
+                <p class="text-xs text-slate-400">จำนวนพนักงาน</p>
+                <p class="text-2xl font-bold text-indigo-400 mt-1" id="statUsers">0</p>
+            </div>
+        </div>
+
+        <!-- View Switcher Tabs -->
+        <div class="flex border-b border-slate-700">
+            <button onclick="switchTab('daily')" id="tabBtnDaily" class="py-2.5 px-5 font-medium text-xs sm:text-sm border-b-2 border-indigo-500 text-indigo-400 flex items-center gap-2 transition">
+                <i class="fa-solid fa-calendar-days"></i> สรุปผลสแกนรายวัน
+            </button>
+            <button onclick="switchTab('all')" id="tabBtnAll" class="py-2.5 px-5 font-medium text-xs sm:text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition">
+                <i class="fa-solid fa-list-check"></i> ประวัติรายการสแกนทั้งหมด
+            </button>
+        </div>
+
+        <!-- TAB 1: DAILY SUMMARY (สรุปผลสแกนรายวัน) -->
+        <div id="tabDaily" class="space-y-4">
+            <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl shadow-xl overflow-hidden">
+                <div class="p-4 border-b border-slate-700/60 flex justify-between items-center">
+                    <h3 class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-indigo-400"></i> สรุปยอดการลงเวลาทำงานแยกตามวัน (เวลาไทย)
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900/60 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700/60">
+                                <th class="py-3 px-4 font-semibold">วันที่ (พ.ศ.)</th>
+                                <th class="py-3 px-4 font-semibold text-center">คนมาทำงาน (คน)</th>
+                                <th class="py-3 px-4 font-semibold text-center">สแกนรวม (ครั้ง)</th>
+                                <th class="py-3 px-4 font-semibold text-center">สแกนปกติ</th>
+                                <th class="py-3 px-4 font-semibold text-center">สแกนซ้ำ</th>
+                                <th class="py-3 px-4 font-semibold text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dailySummaryBody" class="divide-y divide-slate-700/40 text-xs text-slate-200">
+                            <!-- JS Inject -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: ALL LOGS & HISTORICAL SEARCH (สแกนย้อนหลังทั้งหมด) -->
+        <div id="tabAll" class="space-y-4 hidden">
+            <!-- Filter Options -->
+            <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-4 shadow-xl space-y-3">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-3">
+                    <!-- Search input -->
+                    <div class="relative w-full md:w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="searchInput" oninput="renderTable()" placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน..." 
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    </div>
+
+                    <!-- Date Range Selection -->
+                    <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        <span class="text-xs text-slate-400">ช่วงวันที่:</span>
+                        <input type="date" id="dateStart" onchange="renderTable()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <span class="text-xs text-slate-500">-</span>
+                        <input type="date" id="dateEnd" onchange="renderTable()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+
+                        <!-- Status filter -->
+                        <select id="statusFilter" onchange="renderTable()" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <option value="ALL">ทุกสถานะ</option>
+                            <option value="NORMAL">ปกติเท่านั้น</option>
+                            <option value="DUPLICATE">สแกนซ้ำเท่านั้น</option>
+                        </select>
+
+                        <button onclick="resetFilters()" class="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1.5 border border-indigo-500/30 rounded-lg bg-indigo-500/10">
+                            <i class="fa-solid fa-rotate-left"></i> รีเซ็ต
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Date Filters -->
+                <div class="flex items-center gap-2 text-xs border-t border-slate-700/50 pt-2">
+                    <span class="text-slate-400">ปุ่มลัดย้อนหลัง:</span>
+                    <button onclick="setQuickDate('all')" class="bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded">ทั้งหมด</button>
+                    <button onclick="setQuickDate('today')" class="bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded">วันนี้</button>
+                    <button onclick="setQuickDate('7days')" class="bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded">7 วันล่าสุด</button>
+                    <button onclick="setQuickDate('30days')" class="bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded">30 วันล่าสุด</button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl shadow-xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900/60 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700/60">
+                                <th class="py-3 px-4 font-semibold">ลำดับ</th>
+                                <th class="py-3 px-4 font-semibold">รหัสพนักงาน</th>
+                                <th class="py-3 px-4 font-semibold">ชื่อ-นามสกุล</th>
+                                <th class="py-3 px-4 font-semibold">วัน-เวลาสแกน (เวลาไทย)</th>
+                                <th class="py-3 px-4 font-semibold">อุปกรณ์ / สถานะ</th>
+                                <th class="py-3 px-4 font-semibold text-center">ผลการตรวจสอบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceBody" class="divide-y divide-slate-700/40 text-xs text-slate-200">
+                            <!-- JS Inject -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="text-center py-4 text-xs text-slate-500 border-t border-slate-800">
+        ZKTime 5.0 Attendance Checker &copy; เวลาประเทศไทย (Asia/Bangkok)
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        let globalLogs = JSON.parse(localStorage.getItem('zk_logs') || '[]');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDragAndDrop();
+            startThaiClock();
+            analyzeAndRender();
+        });
+
+        // 1. Live Thai Real-time Clock
+        function startThaiClock() {
+            function updateClock() {
+                const now = new Date();
+                const formatter = new Intl.DateTimeFormat('th-TH', {
+                    timeZone: 'Asia/Bangkok',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                document.getElementById('thaiClock').innerText = formatter.format(now) + ' (GMT+7)';
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        // 2. Drag and Drop File Setup
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            
+            dropZone.addEventListener('click', () => document.getElementById('excelFile').click());
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('border-indigo-500', 'bg-slate-900/90');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-indigo-500', 'bg-slate-900/90');
+                });
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files.length) parseExcel(files[0]);
+            });
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) parseExcel(file);
+        }
+
+        // 3. Parse Excel from ZKTime 5.0
+        function parseExcel(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                let newRecords = [];
+
+                workbook.SheetNames.forEach(sheetName => {
+                    const sheet = workbook.Sheets[sheetName];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    
+                    if (rows.length < 2) return;
+
+                    let headerIndex = -1;
+                    let colMap = { empId: -1, name: -1, time: -1, state: -1 };
+
+                    for (let i = 0; i < Math.min(rows.length, 10); i++) {
+                        const row = rows[i].map(c => String(c || '').trim().toLowerCase());
+                        
+                        const empIdx = row.findIndex(c => c.includes('ac-no') || c.includes('user id') || c.includes('รหัส') || c.includes('id'));
+                        const timeIdx = row.findIndex(c => c.includes('time') || c.includes('เวลา') || c.includes('date'));
+                        const nameIdx = row.findIndex(c => c.includes('name') || c.includes('ชื่อ'));
+
+                        if (empIdx !== -1 && timeIdx !== -1) {
+                            headerIndex = i;
+                            colMap.empId = empIdx;
+                            colMap.time = timeIdx;
+                            colMap.name = nameIdx !== -1 ? nameIdx : empIdx;
+                            colMap.state = row.findIndex(c => c.includes('state') || c.includes('สถานะ') || c.includes('device'));
+                            break;
+                        }
+                    }
+
+                    if (headerIndex !== -1) {
+                        for (let r = headerIndex + 1; r < rows.length; r++) {
+                            const row = rows[r];
+                            if (!row || !row[colMap.empId]) continue;
+
+                            const empId = String(row[colMap.empId]).trim();
+                            const name = colMap.name !== -1 && row[colMap.name] ? String(row[colMap.name]).trim() : `พนักงาน (${empId})`;
+                            const rawTime = row[colMap.time];
+                            const deviceState = colMap.state !== -1 && row[colMap.state] ? String(row[colMap.state]).trim() : 'สแกนลายนิ้วมือ';
+
+                            let parsedDate = parseZKTimeDate(rawTime);
+                            if (parsedDate && !isNaN(parsedDate.getTime())) {
+                                newRecords.push({
+                                    id: empId + '_' + parsedDate.getTime(),
+                                    empId: empId,
+                                    name: name,
+                                    timestamp: parsedDate.getTime(),
+                                    dateTimeThaiStr: formatDateTimeThai(parsedDate),
+                                    dateKey: getThaiDateKey(parsedDate), // YYYY-MM-DD
+                                    state: deviceState
+                                });
+                            }
+                        }
+                    }
+                });
+
+                if (newRecords.length > 0) {
+                    mergeLogs(newRecords);
+                    alert(`นำเข้าข้อมูลเรียบร้อยแล้ว เพิ่มรายการสแกนทั้งหมด ${newRecords.length} รายการ`);
+                } else {
+                    alert('ไม่พบข้อมูลการสแกนในรูปแบบของ ZKTIME 5.0 กรุณาตรวจสอบไฟล์อีกครั้ง');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parseZKTimeDate(val) {
+            if (!val) return null;
+            if (val instanceof Date) return val;
+            if (typeof val === 'number') {
+                return new Date(Math.round((val - 25569) * 86400 * 1000));
+            }
+            let str = String(val).trim();
+            let d = new Date(str);
+            if (!isNaN(d.getTime())) return d;
+
+            let parts = str.split(' ');
+            if (parts.length >= 2) {
+                let dateParts = parts[0].split(/[\/\-]/);
+                let timeParts = parts[1].split(':');
+                if (dateParts.length === 3) {
+                    let year = parseInt(dateParts[2]);
+                    if (year < 100) year += 2000;
+                    let month = parseInt(dateParts[1]) - 1;
+                    let day = parseInt(dateParts[0]);
+                    let hours = parseInt(timeParts[0] || 0);
+                    let minutes = parseInt(timeParts[1] || 0);
+                    let seconds = parseInt(timeParts[2] || 0);
+                    return new Date(year, month, day, hours, minutes, seconds);
+                }
+            }
+            return null;
+        }
+
+        function mergeLogs(newRecords) {
+            const map = new Map();
+            globalLogs.forEach(item => map.set(item.id, item));
+            newRecords.forEach(item => map.set(item.id, item));
+
+            globalLogs = Array.from(map.values()).sort((a, b) => b.timestamp - a.timestamp);
+            localStorage.setItem('zk_logs', JSON.stringify(globalLogs));
+            analyzeAndRender();
+        }
+
+        // 4. Analyze Duplicate Scans and Render Stats
+        function analyzeAndRender() {
+            const intervalMinutes = parseInt(document.getElementById('dupInterval').value || 5);
+            const intervalMs = intervalMinutes * 60 * 1000;
+
+            const userGroups = {};
+            globalLogs.forEach(log => {
+                if (!userGroups[log.empId]) userGroups[log.empId] = [];
+                userGroups[log.empId].push(log);
+            });
+
+            globalLogs.forEach(log => log.isDuplicate = false);
+
+            Object.keys(userGroups).forEach(empId => {
+                const logs = userGroups[empId].sort((a, b) => a.timestamp - b.timestamp);
+                for (let i = 1; i < logs.length; i++) {
+                    const prev = logs[i - 1];
+                    const curr = logs[i];
+                    if (curr.timestamp - prev.timestamp <= intervalMs) {
+                        curr.isDuplicate = true;
+                    }
+                }
+            });
+
+            updateOverallStats();
+            renderDailySummary();
+            renderTable();
+        }
+
+        function updateOverallStats() {
+            const total = globalLogs.length;
+            const duplicate = globalLogs.filter(l => l.isDuplicate).length;
+            const normal = total - duplicate;
+            const uniqueUsers = new Set(globalLogs.map(l => l.empId)).size;
+
+            document.getElementById('statTotal').innerText = total.toLocaleString();
+            document.getElementById('statNormal').innerText = normal.toLocaleString();
+            document.getElementById('statDuplicate').innerText = duplicate.toLocaleString();
+            document.getElementById('statUsers').innerText = uniqueUsers.toLocaleString();
+        }
+
+        // 5. Render Daily Summary Table (สรุปสแกนรายวัน)
+        function renderDailySummary() {
+            const tbody = document.getElementById('dailySummaryBody');
+            
+            // Group by Date Key (YYYY-MM-DD)
+            const dailyGroups = {};
+            globalLogs.forEach(log => {
+                const dateKey = log.dateKey || getThaiDateKey(new Date(log.timestamp));
+                if (!dailyGroups[dateKey]) {
+                    dailyGroups[dateKey] = [];
+                }
+                dailyGroups[dateKey].push(log);
+            });
+
+            const sortedDates = Object.keys(dailyGroups).sort((a, b) => b.localeCompare(a));
+
+            if (sortedDates.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-10 text-slate-500">
+                            <i class="fa-solid fa-inbox text-2xl mb-2 block"></i>
+                            ยังไม่มีข้อมูล กรุณาอัปโหลดไฟล์ Excel
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = sortedDates.map(dateKey => {
+                const logs = dailyGroups[dateKey];
+                const total = logs.length;
+                const dupCount = logs.filter(l => l.isDuplicate).length;
+                const normalCount = total - dupCount;
+                const uniqueEmployees = new Set(logs.map(l => l.empId)).size;
+                const formattedDateThai = formatDateKeyToThai(dateKey);
+
+                return `
+                    <tr class="hover:bg-slate-700/30 transition">
+                        <td class="py-3 px-4 font-semibold text-indigo-300">${formattedDateThai}</td>
+                        <td class="py-3 px-4 text-center font-bold text-emerald-400">${uniqueEmployees.toLocaleString()}</td>
+                        <td class="py-3 px-4 text-center font-medium text-slate-200">${total.toLocaleString()}</td>
+                        <td class="py-3 px-4 text-center text-emerald-400 font-medium">${normalCount.toLocaleString()}</td>
+                        <td class="py-3 px-4 text-center text-rose-400 font-medium">${dupCount > 0 ? dupCount.toLocaleString() : '0'}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="filterBySingleDate('${dateKey}')" class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[11px] px-2.5 py-1 rounded border border-indigo-500/30 transition">
+                                <i class="fa-solid fa-magnifying-glass"></i> ดูประวัติ
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 6. Render All Logs Table with Filters (สแกนย้อนหลัง)
+        function renderTable() {
+            const tbody = document.getElementById('attendanceBody');
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const dateStart = document.getElementById('dateStart').value;
+            const dateEnd = document.getElementById('dateEnd').value;
+
+            let filtered = globalLogs.filter(log => {
+                const matchSearch = log.empId.toLowerCase().includes(search) || log.name.toLowerCase().includes(search);
+                const matchStatus = statusFilter === 'ALL' || 
+                                    (statusFilter === 'NORMAL' && !log.isDuplicate) || 
+                                    (statusFilter === 'DUPLICATE' && log.isDuplicate);
+                
+                let matchDate = true;
+                const logDateKey = log.dateKey || getThaiDateKey(new Date(log.timestamp));
+
+                if (dateStart && dateEnd) {
+                    matchDate = logDateKey >= dateStart && logDateKey <= dateEnd;
+                } else if (dateStart) {
+                    matchDate = logDateKey >= dateStart;
+                } else if (dateEnd) {
+                    matchDate = logDateKey <= dateEnd;
+                }
+
+                return matchSearch && matchStatus && matchDate;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-10 text-slate-500">
+                            <i class="fa-solid fa-magnifying-glass text-2xl mb-2 block"></i>
+                            ไม่พบข้อมูลสแกนตรงตามเงื่อนไขที่ค้นหา
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map((log, index) => `
+                <tr class="hover:bg-slate-700/30 transition">
+                    <td class="py-3 px-4 text-slate-400">${index + 1}</td>
+                    <td class="py-3 px-4 font-mono font-medium text-slate-300">${log.empId}</td>
+                    <td class="py-3 px-4 font-medium text-slate-100">${log.name}</td>
+                    <td class="py-3 px-4 text-slate-200">${log.dateTimeThaiStr || formatDateTimeThai(new Date(log.timestamp))}</td>
+                    <td class="py-3 px-4 text-slate-400">${log.state}</td>
+                    <td class="py-3 px-4 text-center">
+                        ${log.isDuplicate ? 
+                            `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                <i class="fa-solid fa-triangle-exclamation"></i> สแกนซ้ำ
+                             </span>` : 
+                            `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                <i class="fa-solid fa-circle-check"></i> ปกติ
+                             </span>`
+                        }
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Helpers for Thai Date Formatting
+        function formatDateTimeThai(dateObj) {
+            if (!dateObj) return '-';
+            return new Intl.DateTimeFormat('th-TH', {
+                timeZone: 'Asia/Bangkok',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }).format(dateObj);
+        }
+
+        function getThaiDateKey(dateObj) {
+            // Returns YYYY-MM-DD
+            const d = new Date(dateObj.toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDateKeyToThai(dateKey) {
+            const [y, m, d] = dateKey.split('-');
+            const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+            return new Intl.DateTimeFormat('th-TH', {
+                timeZone: 'Asia/Bangkok',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'short'
+            }).format(dateObj);
+        }
+
+        // Tab and Quick Filter Functions
+        function switchTab(tab) {
+            const dailyTab = document.getElementById('tabDaily');
+            const allTab = document.getElementById('tabAll');
+            const btnDaily = document.getElementById('tabBtnDaily');
+            const btnAll = document.getElementById('tabBtnAll');
+
+            if (tab === 'daily') {
+                dailyTab.classList.remove('hidden');
+                allTab.classList.add('hidden');
+                btnDaily.className = "py-2.5 px-5 font-medium text-xs sm:text-sm border-b-2 border-indigo-500 text-indigo-400 flex items-center gap-2 transition";
+                btnAll.className = "py-2.5 px-5 font-medium text-xs sm:text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition";
+            } else {
+                dailyTab.classList.add('hidden');
+                allTab.classList.remove('hidden');
+                btnAll.className = "py-2.5 px-5 font-medium text-xs sm:text-sm border-b-2 border-indigo-500 text-indigo-400 flex items-center gap-2 transition";
+                btnDaily.className = "py-2.5 px-5 font-medium text-xs sm:text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition";
+            }
+        }
+
+        function filterBySingleDate(dateKey) {
+            switchTab('all');
+            document.getElementById('dateStart').value = dateKey;
+            document.getElementById('dateEnd').value = dateKey;
+            renderTable();
+        }
+
+        function setQuickDate(type) {
+            const todayStr = getThaiDateKey(new Date());
+            const startInput = document.getElementById('dateStart');
+            const endInput = document.getElementById('dateEnd');
+
+            if (type === 'all') {
+                startInput.value = '';
+                endInput.value = '';
+            } else if (type === 'today') {
+                startInput.value = todayStr;
+                endInput.value = todayStr;
+            } else if (type === '7days') {
+                const past7 = new Date();
+                past7.setDate(past7.getDate() - 7);
+                startInput.value = getThaiDateKey(past7);
+                endInput.value = todayStr;
+            } else if (type === '30days') {
+                const past30 = new Date();
+                past30.setDate(past30.getDate() - 30);
+                startInput.value = getThaiDateKey(past30);
+                endInput.value = todayStr;
+            }
+            renderTable();
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = 'ALL';
+            document.getElementById('dateStart').value = '';
+            document.getElementById('dateEnd').value = '';
+            renderTable();
+        }
+
+        function clearHistory() {
+            if (confirm('คุณต้องการล้างประวัติการสแกนนิ้วย้อนหลังทั้งหมดหรือไม่?')) {
+                globalLogs = [];
+                localStorage.removeItem('zk_logs');
+                analyzeAndRender();
+            }
+        }
+
+        function exportToExcel() {
+            if (globalLogs.length === 0) {
+                alert('ไม่มีข้อมูลสำหรับส่งออก');
+                return;
+            }
+
+            const exportData = globalLogs.map((item, index) => ({
+                'ลำดับ': index + 1,
+                'รหัสพนักงาน': item.empId,
+                'ชื่อ-นามสกุล': item.name,
+                'วันเวลาสแกน (เวลาไทย)': item.dateTimeThaiStr,
+                'สถานะ/อุปกรณ์': item.state,
+                'ผลการตรวจสอบ': item.isDuplicate ? 'สแกนซ้ำ' : 'ปกติ'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "ZKTime_Attendance");
+            XLSX.writeFile(workbook, `ZKTime_Report_TH_${getThaiDateKey(new Date())}.xlsx`);
+        }
+
+        document.getElementById('dupInterval').addEventListener('change', analyzeAndRender);
+    </script>
+</body>
+</html>
