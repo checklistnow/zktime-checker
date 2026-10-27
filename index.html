@@ -3,1591 +3,443 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ระบบตรวจสอบเวลาเข้า-ออกงาน และเพิ่มรายชื่อบุคลากรอัตโนมัติเมื่อแนบไฟล์</title>
+  <title>ระบบเช็คเวลาสแกนนิ้ว & จัดการรายชื่อบุคลากร</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Supabase JS Client v2 CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Noto Sans Thai', 'Inter', sans-serif; background-color: #f1f5f9; color: #0f172a; }
+    body { font-family: 'Noto Sans Thai', sans-serif; background-color: #f8fafc; color: #0f172a; }
     .table-sticky th { position: sticky; top: 0; z-index: 10; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
-  <!-- Top Header & Action Buttons -->
-  <header class="bg-[#1B365D] text-white shadow-lg border-b border-blue-900">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-      <div>
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="bg-emerald-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">✨ ระบบเช็คและเพิ่มคนเข้าทะเบียนอัตโนมัติทันทีเมื่อแนบไฟล์</span>
-          <span class="bg-sky-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">⚡ รองรับการเชื่อมต่อ Supabase Database</span>
-          <span class="text-blue-200 text-xs">รองรับไฟล์ .xlsx / .xls / .xlsm / .csv จากเครื่องสแกนนิ้ว</span>
-        </div>
-        <h1 class="text-xl sm:text-2xl font-bold mt-1">ระบบตรวจสอบเวลาเข้า-ออกงาน เช็คสแกนนิ้วซ้ำ และเพิ่มชื่อบุคลากรอัตโนมัติ</h1>
-        <p class="text-xs sm:text-sm text-blue-100 mt-0.5">เมื่อแนบไฟล์สแกนนิ้ว ระบบจะตรวจสอบรายชื่อทั้งหมด หากไม่พบในทะเบียนหลักจะเพิ่มชื่อเข้าทะเบียนให้อัตโนมัติทันทีพร้อมคำนวณเวลาเข้า-ออก</p>
-      </div>
+<body class="min-h-screen flex flex-col p-4 max-w-7xl mx-auto space-y-4">
 
-      <!-- Primary Clickable Import/Download Buttons -->
-      <div class="flex flex-wrap items-center gap-2">
-        <input type="file" id="fileInputAppend" accept=".xlsx,.xls,.xlsm,.csv" class="hidden" />
-        <input type="file" id="fileInputReplace" accept=".xlsx,.xls,.xlsm,.csv" class="hidden" />
-
-        <button id="btnImportAppend" type="button" class="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
-          <span>📂 1. กดนำเข้าไฟล์สแกนนิ้ว (เก็บประวัติ + เพิ่มคนใหม่อัตโนมัติ)</span>
-        </button>
-
-        <button id="btnImportReplace" type="button" class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-semibold text-sm px-4 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
-          <span>⚡ 2. กดนำเข้าไฟล์รายวัน (เช็คเฉพาะไฟล์นี้ + เพิ่มคนใหม่อัตโนมัติ)</span>
-        </button>
-
-        <button id="btnDownloadXlsm" type="button" class="bg-white hover:bg-blue-50 text-[#1B365D] font-semibold text-sm px-3.5 py-2.5 rounded-lg shadow flex items-center gap-1.5 border border-blue-200 transition">
-          <span>📥 ดาวน์โหลดไฟล์ Excel (.xlsm) รุ่นเพิ่มคนอัตโนมัติ</span>
-        </button>
-
-        <button id="btnExportXlsx" type="button" class="bg-blue-700 hover:bg-blue-600 text-white font-medium text-sm px-3.5 py-2.5 rounded-lg shadow flex items-center gap-1.5 border border-blue-500 transition">
-          <span>📊 ส่งออกผลตรวจเป็น Excel (.xlsx)</span>
-        </button>
-      </div>
+  <!-- Header & Import Controls -->
+  <header class="bg-[#1B365D] text-white p-5 rounded-2xl shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+      <h1 class="text-xl font-bold">ระบบตรวจสอบเวลาสแกนนิ้ว & จัดการทะเบียนบุคลากร</h1>
+      <p class="text-xs text-blue-200 mt-1">💾 บันทึกข้อมูลประวัติสแกนแยกวันลงเครื่องอัตโนมัติ + ลบ/เพิ่มรายชื่อได้ตลอดเวลา</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden" />
+      <button onclick="document.getElementById('fileInput').click()" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow transition">
+        📂 นำเข้าไฟล์สแกนนิ้ว (เพิ่มสะสมตามวัน)
+      </button>
+      <button onclick="exportExcel()" class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow transition">
+        📊 ส่งออก Excel
+      </button>
     </div>
   </header>
 
-  <!-- Notification Toast Banner -->
-  <div id="toastBanner" class="hidden max-w-7xl mx-auto mt-3 px-4 w-full">
-    <div id="toastBox" class="rounded-lg px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm border">
-      <span id="toastText"></span>
-      <button id="btnCloseToast" type="button" class="text-xs underline ml-4 shrink-0">ปิด</button>
+  <!-- Status Notification -->
+  <div id="toast" class="hidden p-3 rounded-xl text-sm font-medium border"></div>
+
+  <!-- Control Bar: Select Date & Filters -->
+  <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+    <div>
+      <label class="block text-xs font-bold text-slate-700 mb-1">📅 เลือกวันที่ต้องการดูข้อมูล</label>
+      <select id="datePicker" onchange="renderAll()" class="w-full bg-amber-50 border-2 border-[#1B365D] rounded-lg p-2 text-sm font-bold text-[#1B365D]"></select>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">🔍 ค้นหาชื่อ/ตำแหน่ง</label>
+      <input type="text" id="searchInput" oninput="renderAll()" placeholder="พิมพ์ชื่อเพื่อค้นหา..." class="w-full border border-slate-300 rounded-lg p-2 text-sm" />
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">⏰ เกณฑ์เข้างานเช้า (สายถ้าเกิน)</label>
+      <input type="time" id="lateTime" value="08:30" onchange="renderAll()" class="w-full border border-slate-300 rounded-lg p-2 text-sm" />
+    </div>
+    <div class="flex gap-2">
+      <button onclick="clearAllData()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-semibold text-xs py-2.5 rounded-lg transition">
+        ↺ ล้างข้อมูลทั้งหมด
+      </button>
+    </div>
+  </section>
+
+  <!-- Main Tabs -->
+  <div class="flex border-b border-slate-300 space-x-2">
+    <button id="tab1Btn" onclick="switchTab(1)" class="py-2 px-4 font-bold text-sm border-b-2 border-[#1B365D] text-[#1B365D]">
+      📋 สรุปเวลาเข้า-ออกงานประจำวัน (<span id="countDaily">0</span> คน)
+    </button>
+    <button id="tab2Btn" onclick="switchTab(2)" class="py-2 px-4 font-semibold text-sm text-slate-500">
+      👥 จัดการทะเบียนรายชื่อบุคลากร (ลบ/เพิ่มคน) (<span id="countRoster">0</span> คน)
+    </button>
+  </div>
+
+  <!-- TAB 1: Daily Summary Table -->
+  <div id="tab1" class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+    <div class="overflow-x-auto max-h-[550px]">
+      <table class="w-full text-xs text-left border-collapse">
+        <thead class="bg-[#1B365D] text-white table-sticky">
+          <tr>
+            <th class="p-3 text-center">#</th>
+            <th class="p-3">สังกัด / กอง</th>
+            <th class="p-3">ชื่อ-นามสกุล</th>
+            <th class="p-3">ตำแหน่ง</th>
+            <th class="p-3 text-center">เวลาเข้า (เช้า)</th>
+            <th class="p-3 text-center">สถานะเช้า</th>
+            <th class="p-3 text-center">เวลาออก (เย็น)</th>
+            <th class="p-3 text-center">สถานะเย็น</th>
+            <th class="p-3 text-center">สรุปผล</th>
+          </tr>
+        </thead>
+        <tbody id="dailyTbody" class="divide-y divide-slate-200"></tbody>
+      </table>
     </div>
   </div>
 
-  <!-- Main Content Container -->
-  <main class="max-w-7xl mx-auto px-4 py-4 flex-1 w-full space-y-4">
-    <!-- Control Bar: Date Selection, Time Thresholds, Demo Auto-Add & Duplicate Buttons -->
-    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
-        <div>
-          <label for="selDate" class="block text-xs font-bold text-slate-700 mb-1">📅 วันที่ต้องการตรวจสอบหลัก (ดูย้อนหลัง)</label>
-          <input type="date" id="selDate" value="2026-10-14" class="w-full bg-amber-50 border-2 border-[#1B365D] rounded-lg px-3 py-1.5 text-sm font-bold text-[#1B365D]" />
-        </div>
-        <div>
-          <label for="QuickDateSelect" class="block text-xs font-semibold text-slate-600 mb-1">🗂️ เลือกจากวันที่ที่มีข้อมูลในระบบ</label>
-          <select id="QuickDateSelect" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-800"></select>
-        </div>
-        <div>
-          <label for="prevDate" class="block text-xs font-semibold text-slate-600 mb-1">⏪ วันที่เช็คเวลาออกเย็นย้อนหลัง (วันก่อน)</label>
-          <input type="date" id="prevDate" value="2026-10-13" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-700" />
-        </div>
-        <div>
-          <label for="lateTimeInput" class="block text-xs font-semibold text-slate-600 mb-1">⏰ เกณฑ์เข้างานเช้า (ปกติ ≤)</label>
-          <input type="time" id="lateTimeInput" value="08:30" step="60" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-800" />
-        </div>
-        <div>
-          <label for="outTimeInput" class="block text-xs font-semibold text-slate-600 mb-1">🕔 เกณฑ์ออกงานเย็น (ปกติ ≥)</label>
-          <input type="time" id="outTimeInput" value="16:30" step="60" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-800" />
-        </div>
-        <div class="flex flex-wrap gap-1.5">
-          <button id="btnDemoNewPerson" type="button" class="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 font-semibold text-xs px-2.5 py-2 rounded-lg transition" title="จำลองแนบไฟล์ที่มีชื่อคนใหม่ที่ไม่อยู่ในทะเบียน เพื่อดูการทำงานของการเพิ่มชื่ออัตโนมัติ">
-            ✨ ทดลองแนบไฟล์มีคนใหม่
-          </button>
-          <button id="btnDemoDup" type="button" class="bg-orange-100 hover:bg-orange-200 text-orange-900 border border-orange-300 font-semibold text-xs px-2.5 py-2 rounded-lg transition" title="จำลองเพิ่มเวลาสแกนซ้ำและเวลาออกเย็นเพื่อทดสอบการแสดงผล">
-            🧪 จำลองสแกนซ้ำ
-          </button>
-          <button id="btnResetData" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-medium text-xs px-2.5 py-2 rounded-lg transition" title="คืนค่าข้อมูลตั้งต้น 14/10/2026">
-            ↺ รีเซ็ต
-          </button>
-        </div>
+  <!-- TAB 2: Manage Roster & Delete People -->
+  <div id="tab2" class="hidden space-y-4">
+    <!-- Add Person Box -->
+    <div class="bg-purple-50 p-4 rounded-xl border border-purple-200 flex flex-col md:flex-row gap-2 items-end">
+      <div class="flex-1">
+        <label class="block text-xs font-bold text-purple-900 mb-1">ชื่อ-นามสกุล</label>
+        <input type="text" id="addName" placeholder="เช่น นายสมชาย ใจดี" class="w-full border border-purple-300 rounded-lg p-2 text-xs" />
       </div>
-    </section>
-
-    <!-- KPI Summary Cards -->
-    <section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
-      <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
-        <div class="text-xs font-semibold text-slate-500">บุคลากรทั้งหมด</div>
-        <div id="kpiTotalEmp" class="text-2xl font-bold text-[#1B365D] mt-0.5">143</div>
-        <div class="text-[11px] text-slate-400">รวมที่เพิ่มอัตโนมัติ</div>
+      <div>
+        <label class="block text-xs font-bold text-purple-900 mb-1">สังกัด/กอง</label>
+        <input type="text" id="addDept" placeholder="เช่น สำนักปลัด" class="w-full border border-purple-300 rounded-lg p-2 text-xs" />
       </div>
-      <div class="bg-purple-50 rounded-xl p-3 border-2 border-purple-300 shadow-sm">
-        <div class="text-xs font-bold text-purple-800">✨ เพิ่มคนอัตโนมัติ</div>
-        <div id="kpiAutoAdded" class="text-2xl font-bold text-purple-700 mt-0.5">1</div>
-        <div class="text-[11px] text-purple-700">พบชื่อใหม่จากไฟล์สแกน</div>
+      <div>
+        <label class="block text-xs font-bold text-purple-900 mb-1">ตำแหน่ง</label>
+        <input type="text" id="addPos" placeholder="เช่น พนักงานจ้าง" class="w-full border border-purple-300 rounded-lg p-2 text-xs" />
       </div>
-      <div class="bg-white rounded-xl p-3 border border-blue-200 shadow-sm">
-        <div class="text-xs font-semibold text-blue-700">สแกนเข้าเช้า</div>
-        <div id="kpiMorningIn" class="text-2xl font-bold text-blue-800 mt-0.5">135</div>
-        <div class="text-[11px] text-slate-400">มีเวลาเข้าช่วงเช้า</div>
-      </div>
-      <div class="bg-white rounded-xl p-3 border border-emerald-200 shadow-sm">
-        <div class="text-xs font-semibold text-emerald-700">มาทันเวลา</div>
-        <div id="kpiOnTime" class="text-2xl font-bold text-emerald-700 mt-0.5">132</div>
-        <div class="text-[11px] text-slate-400">ทันเกณฑ์เวลาเข้า</div>
-      </div>
-      <div class="bg-white rounded-xl p-3 border border-amber-200 shadow-sm">
-        <div class="text-xs font-semibold text-amber-700">มาสาย</div>
-        <div id="kpiLate" class="text-2xl font-bold text-amber-700 mt-0.5">3</div>
-        <div class="text-[11px] text-slate-400">หลังเกณฑ์เวลาเช้า</div>
-      </div>
-      <div class="bg-white rounded-xl p-3 border border-indigo-200 shadow-sm">
-        <div class="text-xs font-semibold text-indigo-700">สแกนออกเย็น</div>
-        <div id="kpiEveningOut" class="text-2xl font-bold text-indigo-800 mt-0.5">129</div>
-        <div class="text-[11px] text-slate-400">มีเวลาออกช่วงเย็น</div>
-      </div>
-      <div class="bg-orange-50 rounded-xl p-3 border-2 border-orange-300 shadow-sm">
-        <div class="text-xs font-bold text-orange-800">⚠️ พบคนสแกนซ้ำ</div>
-        <div id="kpiDupEmp" class="text-2xl font-bold text-orange-700 mt-0.5">2</div>
-        <div class="text-[11px] text-orange-700">สแกนเกิน 1 ครั้ง/กะ</div>
-      </div>
-      <div class="bg-white rounded-xl p-3 border border-rose-200 shadow-sm">
-        <div class="text-xs font-semibold text-rose-700">ไม่พบข้อมูลสแกน</div>
-        <div id="kpiMissing" class="text-2xl font-bold text-rose-700 mt-0.5">8</div>
-        <div class="text-[11px] text-slate-400">ขาดสแกนในวันนี้</div>
-      </div>
-    </section>
-
-    <!-- Navigation Tabs -->
-    <nav class="flex flex-wrap gap-2 border-b border-slate-300 pb-2">
-      <button id="tabBtnDaily" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-[#1B365D] text-white shadow-sm">
-        📋 1. ตารางสรุปรายวันและเช็คย้อนหลัง (<span id="dailyCountBadge">143</span> คน)
+      <button onclick="addPerson()" class="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition">
+        + เพิ่มชื่อเข้าทะเบียน
       </button>
-      <button id="tabBtnCat" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
-        🏛️ 2. สรุปแยกตามประเภทบุคลากรและกอง/สำนัก
-      </button>
-      <button id="tabBtnRaw" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
-        🕒 3. ข้อมูลสแกนดิบและรายการสแกนซ้ำ (<span id="rawCountBadge">267</span> รายการ)
-      </button>
-      <button id="tabBtnRoster" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
-        👥 4. ทะเบียนรายชื่อหลักและคนเพิ่มอัตโนมัติ (<span id="rosterCountBadge">143</span> คน)
-      </button>
-      <button id="tabBtnExamples" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 border border-amber-500 shadow-sm">
-        📖 5. ตัวอย่างไฟล์สแกนนิ้ว & กดทดลองใช้ (ครบ 5 แบบ)
-      </button>
-    </nav>
+    </div>
 
-    <!-- TAB 1: Daily & Historical Attendance Table -->
-    <section id="viewDaily" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <select id="filterType" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
-            <option value="ALL">ทุกประเภทบุคลากร</option>
-            <option value="พนักงานเทศบาล">พนักงานเทศบาล</option>
-            <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
-            <option value="พนักงานจ้างตามภารกิจ">พนักงานจ้างตามภารกิจ</option>
-            <option value="พนักงานจ้างทั่วไป">พนักงานจ้างทั่วไป</option>
-          </select>
-
-          <select id="filterDept" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
-            <option value="ALL">ทุกสังกัด / สำนัก / กอง</option>
-            <option value="ผู้บริหารท้องถิ่น">ผู้บริหารท้องถิ่น</option>
-            <option value="สำนักปลัดเทศบาล">สำนักปลัดเทศบาล</option>
-            <option value="กองคลัง">กองคลัง</option>
-            <option value="กองช่าง">กองช่าง</option>
-            <option value="กองสาธารณสุขและสิ่งแวดล้อม">กองสาธารณสุขและสิ่งแวดล้อม</option>
-            <option value="กองการศึกษา">กองการศึกษา</option>
-            <option value="กองสวัสดิการสังคม">กองสวัสดิการสังคม</option>
-            <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)">✨ ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)</option>
-          </select>
-
-          <select id="filterStatus" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
-            <option value="ALL">ทุกสถานะการสแกน</option>
-            <option value="AUTO_ADDED">✨ เฉพาะคนที่ระบบเพิ่มชื่อให้อัตโนมัติ</option>
-            <option value="SCANNED">สแกนแล้วทั้งหมด</option>
-            <option value="DUP">⚠️ เฉพาะคนสแกนซ้ำ (สแกนซ้ำ)</option>
-            <option value="LATE">เฉพาะคนมาสาย</option>
-            <option value="MISSING">เฉพาะคนยังไม่พบข้อมูลสแกน</option>
-          </select>
-        </div>
-
-        <div class="w-full sm:w-64">
-          <input type="text" id="searchEmp" placeholder="🔍 ค้นหาชื่อ-สกุล หรือตำแหน่ง..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs" />
-        </div>
-      </div>
-
-      <div class="overflow-x-auto max-h-[540px] border border-slate-200 rounded-lg">
-        <table class="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr class="bg-[#1B365D] text-white table-sticky">
-              <th class="py-2.5 px-2.5 text-center">#</th>
-              <th class="py-2.5 px-2.5">ประเภทบุคลากร (ราชการ)</th>
-              <th class="py-2.5 px-2.5">สังกัด/กอง</th>
-              <th class="py-2.5 px-2.5">ชื่อ-นามสกุล</th>
-              <th class="py-2.5 px-2.5">ตำแหน่งสายงาน</th>
-              <th class="py-2.5 px-2.5 text-center">เวลาเข้า (เช้า)</th>
-              <th class="py-2.5 px-2.5 text-center">สถานะเช้า</th>
-              <th class="py-2.5 px-2.5 text-center">เวลาออก (เย็น)</th>
-              <th class="py-2.5 px-2.5 text-center">สถานะเย็น</th>
-              <th class="py-2.5 px-2.5 text-center">เช้า/เย็น (ครั้ง)</th>
-              <th class="py-2.5 px-2.5 text-center bg-orange-700">เช็คสแกนซ้ำ</th>
-              <th class="py-2.5 px-2.5 text-center">สรุปผลตรวจ</th>
-              <th class="py-2.5 px-2.5 text-center bg-slate-700">เวลาออกเย็น (วันก่อน)</th>
+    <!-- Roster List with Delete Button -->
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div class="overflow-x-auto max-h-[500px]">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead class="bg-slate-800 text-white table-sticky">
+            <tr>
+              <th class="p-3 text-center">#</th>
+              <th class="p-3">ชื่อ-นามสกุล</th>
+              <th class="p-3">สังกัด/กอง</th>
+              <th class="p-3">ตำแหน่ง</th>
+              <th class="p-3 text-center">จัดการ</th>
             </tr>
           </thead>
-          <tbody id="dailyTableBody" class="divide-y divide-slate-200"></tbody>
+          <tbody id="rosterTbody" class="divide-y divide-slate-200"></tbody>
         </table>
       </div>
-    </section>
-
-    <!-- TAB 2: Category & Department Breakdown -->
-    <section id="viewCat" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-        <h2 class="text-sm font-bold text-[#1B365D] mb-3">1. สรุปการสแกนแยกตามประเภทบุคลากรตามระบบราชการ</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-xs border-collapse">
-            <thead>
-              <tr class="bg-[#1B365D] text-white">
-                <th class="p-2 text-left">ประเภทบุคลากร</th>
-                <th class="p-2 text-right">ทั้งหมด</th>
-                <th class="p-2 text-right">เข้าเช้า</th>
-                <th class="p-2 text-right">ทันเวลา</th>
-                <th class="p-2 text-right">มาสาย</th>
-                <th class="p-2 text-right">ออกเย็น</th>
-                <th class="p-2 text-right bg-orange-700">สแกนซ้ำ</th>
-                <th class="p-2 text-right">ไม่พบสแกน</th>
-              </tr>
-            </thead>
-            <tbody id="catSummaryBody" class="divide-y divide-slate-200"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-        <h2 class="text-sm font-bold text-[#1B365D] mb-3">2. สรุปการสแกนแยกตามสังกัด / สำนัก / กอง</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-xs border-collapse">
-            <thead>
-              <tr class="bg-[#1B365D] text-white">
-                <th class="p-2 text-left">สังกัด / กอง</th>
-                <th class="p-2 text-right">ทั้งหมด</th>
-                <th class="p-2 text-right">เข้าเช้า</th>
-                <th class="p-2 text-right">ทันเวลา</th>
-                <th class="p-2 text-right">มาสาย</th>
-                <th class="p-2 text-right">ออกเย็น</th>
-                <th class="p-2 text-right bg-orange-700">สแกนซ้ำ</th>
-                <th class="p-2 text-right">ไม่พบสแกน</th>
-              </tr>
-            </thead>
-            <tbody id="deptSummaryBody" class="divide-y divide-slate-200"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 3: Raw Scan Records & Duplicate Scan Inspector -->
-    <section id="viewRaw" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h2 class="text-sm font-bold text-[#1B365D]">รายการข้อมูลสแกนนิ้วดิบทั้งหมดในระบบ และผลตรวจบรรทัดที่สแกนซ้ำ</h2>
-          <p class="text-xs text-slate-500">หากมีชื่อในไฟล์สแกนที่ไม่อยู่ในทะเบียนหลัก ระบบจะเพิ่มเข้าทะเบียนหลักให้อัตโนมัติทันทีและติดป้าย ✨ เพิ่มชื่ออัตโนมัติ</p>
-        </div>
-        <select id="filterRawDup" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
-          <option value="ALL">แสดงทุกบรรทัดสแกน</option>
-          <option value="DUP">⚠️ เฉพาะบรรทัดที่ขึ้น "สแกนซ้ำ"</option>
-          <option value="AUTO_ADDED">✨ เฉพาะบรรทัดของคนที่เพิ่มเข้าทะเบียนอัตโนมัติ</option>
-        </select>
-      </div>
-      <div class="overflow-x-auto max-h-[500px] border border-slate-200 rounded-lg">
-        <table class="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr class="bg-slate-800 text-white table-sticky">
-              <th class="p-2 text-center">#</th>
-              <th class="p-2">ประเภทในไฟล์ดิบ</th>
-              <th class="p-2">ชื่อในไฟล์ดิบ</th>
-              <th class="p-2">วัน/เวลาสแกน</th>
-              <th class="p-2">วันที่</th>
-              <th class="p-2">เวลา</th>
-              <th class="p-2">ช่วงเวลา</th>
-              <th class="p-2">ประเภทตามระบบราชการ</th>
-              <th class="p-2">สังกัด/กอง</th>
-              <th class="p-2 text-center">ครั้งที่ในกะ</th>
-              <th class="p-2 text-center bg-orange-700">ผลตรวจสแกนซ้ำ</th>
-            </tr>
-          </thead>
-          <tbody id="rawTableBody" class="divide-y divide-slate-200"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- TAB 4: Master Roster & Alias Manager -->
-    <section id="viewRoster" class="hidden space-y-4">
-      <!-- Manual Add Person Quick Form -->
-      <div class="bg-purple-50 rounded-xl shadow-sm border border-purple-200 p-4">
-        <div class="flex flex-col md:flex-row md:items-end justify-between gap-3">
-          <div>
-            <h3 class="text-sm font-bold text-purple-900">➕ เพิ่มรายชื่อบุคลากรด้วยตนเอง (นอกเหนือจากการเพิ่มอัตโนมัติเมื่อแนบไฟล์)</h3>
-            <p class="text-xs text-purple-700">ปกติเมื่อแนบไฟล์สแกนนิ้ว ระบบจะเช็คและเพิ่มคนที่ยังไม่มีในรายชื่อให้อัตโนมัติอยู่แล้ว แต่สามารถเพิ่มล่วงหน้าหรือแก้ไขสังกัด/ตำแหน่งในตารางด้านล่างได้ตลอดเวลา</p>
-          </div>
-          <div class="flex flex-wrap items-end gap-2">
-            <div>
-              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">ชื่อ-นามสกุล</label>
-              <input type="text" id="manualFullname" placeholder="เช่น นายสมชาย ใจดี" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs w-44" />
-            </div>
-            <div>
-              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">ประเภทบุคลากร</label>
-              <select id="manualType" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800">
-                <option value="พนักงานจ้างทั่วไป">พนักงานจ้างทั่วไป</option>
-                <option value="พนักงานจ้างตามภารกิจ">พนักงานจ้างตามภารกิจ</option>
-                <option value="พนักงานเทศบาล">พนักงานเทศบาล</option>
-                <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">สังกัด/กอง</label>
-              <select id="manualDept" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800">
-                <option value="สำนักปลัดเทศบาล">สำนักปลัดเทศบาล</option>
-                <option value="กองคลัง">กองคลัง</option>
-                <option value="กองช่าง">กองช่าง</option>
-                <option value="กองสาธารณสุขและสิ่งแวดล้อม">กองสาธารณสุขและสิ่งแวดล้อม</option>
-                <option value="กองการศึกษา">กองการศึกษา</option>
-                <option value="กองสวัสดิการสังคม">กองสวัสดิการสังคม</option>
-                <option value="ผู้บริหารท้องถิ่น">ผู้บริหารท้องถิ่น</option>
-                <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)">ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">ตำแหน่ง</label>
-              <input type="text" id="manualPos" placeholder="เช่น คนงาน" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs w-36" />
-            </div>
-            <button id="btnManualAddPerson" type="button" class="bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg shadow transition">
-              + เพิ่มเข้าทะเบียน
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-          <h2 class="text-sm font-bold text-[#1B365D] mb-2">ทะเบียนบุคลากรหลักและรายชื่อที่เพิ่มอัตโนมัติ (คลิกเปลี่ยนประเภท/สังกัด/ตำแหน่งได้ทันที)</h2>
-          <div class="overflow-x-auto max-h-[460px] border border-slate-200 rounded-lg">
-            <table class="w-full text-xs border-collapse">
-              <thead>
-                <tr class="bg-[#1B365D] text-white table-sticky">
-                  <th class="p-2">#</th>
-                  <th class="p-2">ประเภทบุคลากร</th>
-                  <th class="p-2">สังกัด/กอง</th>
-                  <th class="p-2">ชื่อ-นามสกุลเต็ม</th>
-                  <th class="p-2">ตำแหน่ง</th>
-                  <th class="p-2 text-center">ที่มา</th>
-                </tr>
-              </thead>
-              <tbody id="rosterTableBody" class="divide-y divide-slate-200"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
-          <h2 class="text-sm font-bold text-[#1B365D]">ตารางเทียบชื่อสะกดต่าง (ชื่อเทียบ 15 คู่)</h2>
-          <div class="overflow-x-auto max-h-[460px] border border-slate-200 rounded-lg">
-            <table class="w-full text-xs border-collapse">
-              <thead>
-                <tr class="bg-slate-800 text-white table-sticky">
-                  <th class="p-2 text-left">ชื่อในไฟล์ดิบ</th>
-                  <th class="p-2 text-left">ชื่อในทะเบียนหลัก</th>
-                </tr>
-              </thead>
-              <tbody id="aliasTableBody" class="divide-y divide-slate-200"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 5: Interactive Examples & Sample Formats Gallery -->
-    <section id="viewExamples" class="hidden space-y-4">
-      <div class="bg-gradient-to-r from-[#1B365D] to-blue-800 text-white rounded-xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <span class="bg-amber-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">คู่มือตัวอย่างการใช้งานจริง</span>
-          <h2 class="text-lg sm:text-xl font-bold mt-1.5">ตัวอย่างรูปแบบไฟล์สแกนนิ้วที่ใช้แนบได้ทั้ง 5 รูปแบบ & สถานการณ์การตรวจสอบ</h2>
-          <p class="text-xs sm:text-sm text-blue-100 mt-1">คลิกปุ่ม <strong>"🚀 กดทดลองจำลองข้อมูลชุดนี้"</strong> เพื่อดูผลลัพธ์การทำงานทันทีในหน้าตารางหลัก หรือกด <strong>"📥 ดาวน์โหลดไฟล์ .xlsx ตัวอย่าง"</strong> เพื่อนำไปทดสอบกดปุ่มนำเข้าไฟล์</p>
-        </div>
-        <div class="flex flex-wrap gap-2 shrink-0">
-          <button id="btnDownloadAllExamplesXlsx" type="button" class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
-            <span>📦 ดาวน์โหลดไฟล์รวมตัวอย่างทั้ง 5 แบบ (.xlsx)</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 5 Interactive Example Cards -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <!-- Example 1 -->
-        <div class="bg-white rounded-xl shadow-sm border-2 border-emerald-200 p-4 flex flex-col justify-between space-y-3">
-          <div class="space-y-2">
-            <div class="flex items-center justify-between gap-2">
-              <span class="bg-emerald-100 text-emerald-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 1 • มาตรฐานเครื่องสแกนนิ้วทั่วไป (3 คอลัมน์)</span>
-              <span class="text-xs text-slate-500 font-mono">วันที่ตัวอย่าง: 2026-10-15</span>
-            </div>
-            <h3 class="text-sm font-bold text-[#1B365D]">สแกนเข้าเช้า + สแกนออกเย็นครบถ้วน / เช็คคนมาสายและออกก่อนเวลา</h3>
-            <p class="text-xs text-slate-600">ใช้เมื่อส่งออกไฟล์จากเครื่องสแกนนิ้วที่มี <strong>ตำแหน่ง/ประเภท</strong>, <strong>ชื่อ-สกุล</strong> และ <strong>วัน/เวลา</strong> ทั้งรอบเช้าและรอบเย็นในชีตเดียวกัน</p>
-            <div class="overflow-x-auto border border-slate-200 rounded-lg">
-              <table class="w-full text-[11px] text-left border-collapse">
-                <thead class="bg-slate-100 text-slate-700">
-                  <tr><th class="p-1.5 border-b">ตำแหน่ง</th><th class="p-1.5 border-b">ชื่อ-สกุล</th><th class="p-1.5 border-b">วัน/เวลา</th><th class="p-1.5 border-b">ผลลัพธ์ที่ระบบตรวจให้</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 font-mono">
-                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล/ลูกจ้างประจำ</td><td class="p-1.5 font-sans font-semibold">พันจ่าเอกสยาม แพทยารักษ์</td><td class="p-1.5">2026-10-15 08:12:10</td><td class="p-1.5 font-sans text-emerald-700 font-semibold">เข้าปกติ + ออกปกติ (16:40)</td></tr>
-                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล/ลูกจ้างประจำ</td><td class="p-1.5 font-sans font-semibold">ต้นกัญญา รัตนาวดี</td><td class="p-1.5">2026-10-15 08:42:19</td><td class="p-1.5 font-sans text-amber-700 font-semibold">มาสาย (>08:30)</td></tr>
-                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล/ลูกจ้างประจำ</td><td class="p-1.5 font-sans font-semibold">พิชาวีร์ เอมดวง</td><td class="p-1.5">2026-10-15 16:10:00</td><td class="p-1.5 font-sans text-amber-700 font-semibold">ออกก่อนเวลา (<16:30)</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-            <button type="button" data-ex-id="1" class="btn-run-example flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
-              🚀 กดทดลองจำลองแบบที่ 1 (ดูผลในตารางทันที)
-            </button>
-            <button type="button" data-ex-dl="1" class="btn-dl-example bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-medium text-xs px-3 py-2 rounded-lg transition">
-              📥 ดาวน์โหลดไฟล์ตัวอย่างแบบที่ 1 (.xlsx)
-            </button>
-          </div>
-        </div>
-
-        <!-- Example 2 -->
-        <div class="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 flex flex-col justify-between space-y-3">
-          <div class="space-y-2">
-            <div class="flex items-center justify-between gap-2">
-              <span class="bg-purple-100 text-purple-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 2 • มีคนใหม่ไม่อยู่ในทะเบียน + สแกนนิ้วซ้ำ + ชื่อสะกดต่าง</span>
-              <span class="text-xs text-slate-500 font-mono">วันที่ตัวอย่าง: 2026-10-16</span>
-            </div>
-            <h3 class="text-sm font-bold text-[#1B365D]">ระบบเพิ่มคนใหม่เข้าทะเบียนอัตโนมัติ (✨) + แจ้งเตือนสแกนซ้ำ (⚠️)</h3>
-            <p class="text-xs text-slate-600">เมื่อแนบไฟล์ที่มีชื่อพนักงานใหม่ที่ยังไม่มีในทะเบียน ระบบจะเพิ่มเข้าทะเบียนให้อัตโนมัติทันที พร้อมจับคู่ชื่อที่สะกดต่าง 15 คู่ และตรวจคนกดสแกนนิ้วซ้ำหลายครั้ง</p>
-            <div class="overflow-x-auto border border-slate-200 rounded-lg">
-              <table class="w-full text-[11px] text-left border-collapse">
-                <thead class="bg-slate-100 text-slate-700">
-                  <tr><th class="p-1.5 border-b">ตำแหน่ง</th><th class="p-1.5 border-b">ชื่อ-สกุลในไฟล์สแกน</th><th class="p-1.5 border-b">วัน/เวลา</th><th class="p-1.5 border-b">ผลลัพธ์อัตโนมัติ</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 font-mono">
-                  <tr class="bg-purple-50/60"><td class="p-1.5 font-sans">พนักงานจ้างตามภารกิจ</td><td class="p-1.5 font-sans font-bold text-purple-900">นางสาวกมลชนก รุ่งเรืองกิจ</td><td class="p-1.5">2026-10-16 07:50:12</td><td class="p-1.5 font-sans text-purple-800 font-bold">✨ เพิ่มชื่อเข้าทะเบียนอัตโนมัติ</td></tr>
-                  <tr class="bg-orange-50/60"><td class="p-1.5 font-sans">พนักงานเทศบาล/ลูกจ้างประจำ</td><td class="p-1.5 font-sans font-bold text-orange-900">พันจ่าเอกสยาม แพทยารักษ์</td><td class="p-1.5">08:05 / 08:06 (2 ครั้ง)</td><td class="p-1.5 font-sans text-orange-800 font-bold">⚠️ แจ้งเตือนสแกนซ้ำ (เช้า 2 ครั้ง)</td></tr>
-                  <tr><td class="p-1.5 font-sans">พนักงานจ้างทั่วไป</td><td class="p-1.5 font-sans font-semibold">บุณยานุช ชัยชาญ</td><td class="p-1.5">2026-10-16 07:45:00</td><td class="p-1.5 font-sans text-blue-800 font-semibold">🔗 เทียบชื่อตรงกับ น.ส.บุณยานุช ชัยชายเรืองหิรัญ</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-            <button type="button" data-ex-id="2" class="btn-run-example flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
-              🚀 กดทดลองจำลองแบบที่ 2 (ดูคนใหม่ + สแกนซ้ำ)
-            </button>
-            <button type="button" data-ex-dl="2" class="btn-dl-example bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-medium text-xs px-3 py-2 rounded-lg transition">
-              📥 ดาวน์โหลดไฟล์ตัวอย่างแบบที่ 2 (.xlsx)
-            </button>
-          </div>
-        </div>
-
-        <!-- Example 3 -->
-        <div class="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 flex flex-col justify-between space-y-3">
-          <div class="space-y-2">
-            <div class="flex items-center justify-between gap-2">
-              <span class="bg-blue-100 text-blue-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 3 • ไฟล์แบบย่อ มีเฉพาะ ชื่อ-สกุล และ วัน/เวลา (2 คอลัมน์)</span>
-              <span class="text-xs text-slate-500 font-mono">วันที่ตัวอย่าง: 2026-10-17</span>
-            </div>
-            <h3 class="text-sm font-bold text-[#1B365D]">ไม่ต้องมีคอลัมน์ตำแหน่ง ระบบดึงสังกัดและตำแหน่งจากทะเบียนหลักให้อัตโนมัติ</h3>
-            <p class="text-xs text-slate-600">ใช้เมื่อไฟล์จากเครื่องสแกนมีแค่ 2 คอลัมน์ (ชื่อ-สกุล และ วัน/เวลาแบบ <code>DD/MM/YYYY HH:MM:SS</code>) ระบบจะค้นหาประเภทบุคลากรและกอง/สำนักให้เอง</p>
-            <div class="overflow-x-auto border border-slate-200 rounded-lg">
-              <table class="w-full text-[11px] text-left border-collapse">
-                <thead class="bg-slate-100 text-slate-700">
-                  <tr><th class="p-1.5 border-b">ชื่อ-สกุล (คอลัมน์ A)</th><th class="p-1.5 border-b">วัน/เวลาสแกน (คอลัมน์ B)</th><th class="p-1.5 border-b">การดึงข้อมูลของระบบ</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 font-mono">
-                  <tr><td class="p-1.5 font-sans font-semibold">พันจ่าเอกสยาม แพทยารักษ์</td><td class="p-1.5">17/10/2026 08:02:15</td><td class="p-1.5 font-sans text-blue-700">ดึงสังกัด "ผู้บริหารท้องถิ่น" อัตโนมัติ</td></tr>
-                  <tr><td class="p-1.5 font-sans font-semibold">นายธนะชัย แสนสุขสกุลชล</td><td class="p-1.5">17/10/2026 08:09:45</td><td class="p-1.5 font-sans text-blue-700">ดึงสังกัด "กองช่าง" อัตโนมัติ</td></tr>
-                  <tr class="bg-purple-50/60"><td class="p-1.5 font-sans font-bold text-purple-900">นางสาวอารยา สุขสวัสดิ์ (คนใหม่)</td><td class="p-1.5">17/10/2026 08:00:05</td><td class="p-1.5 font-sans text-purple-800 font-bold">✨ เพิ่มเข้าทะเบียนเป็นพนักงานจ้างทั่วไป</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-            <button type="button" data-ex-id="3" class="btn-run-example flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
-              🚀 กดทดลองจำลองแบบที่ 3 (ไฟล์ 2 คอลัมน์)
-            </button>
-            <button type="button" data-ex-dl="3" class="btn-dl-example bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-medium text-xs px-3 py-2 rounded-lg transition">
-              📥 ดาวน์โหลดไฟล์ตัวอย่างแบบที่ 3 (.xlsx)
-            </button>
-          </div>
-        </div>
-
-        <!-- Example 4 -->
-        <div class="bg-white rounded-xl shadow-sm border-2 border-amber-200 p-4 flex flex-col justify-between space-y-3">
-          <div class="space-y-2">
-            <div class="flex items-center justify-between gap-2">
-              <span class="bg-amber-100 text-amber-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 4 • แยกคอลัมน์ ชื่อ / นามสกุล + ปี พ.ศ. 2569 (4 คอลัมน์)</span>
-              <span class="text-xs text-slate-500 font-mono">วันที่ตัวอย่าง: 18/10/2569 (2026-10-18)</span>
-            </div>
-            <h3 class="text-sm font-bold text-[#1B365D]">รวมชื่อ-นามสกุลให้อัตโนมัติ และแปลงปี พ.ศ. 2569 เป็น ค.ศ. 2026 ทันที</h3>
-            <p class="text-xs text-slate-600">ใช้เมื่อโปรแกรมสแกนนิ้วแยกคอลัมน์ <strong>ชื่อ</strong> กับ <strong>นามสกุล</strong> ออกจากกัน หรือส่งออกวันที่เป็นปี พ.ศ. (เช่น <code>18/10/2569 07:58:12</code>)</p>
-            <div class="overflow-x-auto border border-slate-200 rounded-lg">
-              <table class="w-full text-[11px] text-left border-collapse">
-                <thead class="bg-slate-100 text-slate-700">
-                  <tr><th class="p-1.5 border-b">ประเภท</th><th class="p-1.5 border-b">ชื่อ</th><th class="p-1.5 border-b">นามสกุล</th><th class="p-1.5 border-b">วัน/เวลา (พ.ศ.)</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 font-mono">
-                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล</td><td class="p-1.5 font-sans font-semibold">พันจ่าเอกสยาม</td><td class="p-1.5 font-sans font-semibold">แพทยารักษ์</td><td class="p-1.5">18/10/2569 07:58:12</td></tr>
-                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล</td><td class="p-1.5 font-sans font-semibold">นางสาวกันตา</td><td class="p-1.5 font-sans font-semibold">ธวาบุญรัศมี</td><td class="p-1.5">18/10/2569 08:11:34</td></tr>
-                  <tr class="bg-purple-50/60"><td class="p-1.5 font-sans">พนักงานจ้างตามภารกิจ</td><td class="p-1.5 font-sans font-bold text-purple-900">นายณัฐวุฒิ</td><td class="p-1.5 font-sans font-bold text-purple-900">เจริญสุข (คนใหม่)</td><td class="p-1.5">18/10/2569 07:49:30</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-            <button type="button" data-ex-id="4" class="btn-run-example flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-3 py-2 rounded-lg shadow-sm transition">
-              🚀 กดทดลองจำลองแบบที่ 4 (แยกชื่อ-สกุล + ปี พ.ศ.)
-            </button>
-            <button type="button" data-ex-dl="4" class="btn-dl-example bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-medium text-xs px-3 py-2 rounded-lg transition">
-              📥 ดาวน์โหลดไฟล์ตัวอย่างแบบที่ 4 (.xlsx)
-            </button>
-          </div>
-        </div>
-
-        <!-- Example 5 (Full width) -->
-        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border-2 border-indigo-200 p-4 flex flex-col justify-between space-y-3">
-          <div class="space-y-2">
-            <div class="flex items-center justify-between gap-2">
-              <span class="bg-indigo-100 text-indigo-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 5 • แยกคอลัมน์ "วันที่" และ "เวลา" คนละคอลัมน์ + เช็คเวลาออกเย็นย้อนหลังข้ามวัน</span>
-              <span class="text-xs text-slate-500 font-mono">วันที่ตัวอย่าง: 2026-10-18 และ 2026-10-19</span>
-            </div>
-            <h3 class="text-sm font-bold text-[#1B365D]">รองรับไฟล์ที่แยกคอลัมน์ วันที่ (Date) กับ เวลา (Time) และใช้ตรวจสอบเวลาออกงานเย็นของเมื่อวานควบคู่กับเวลาเข้าเช้าวันนี้</h3>
-            <p class="text-xs text-slate-600">เหมาะสำหรับกรณีที่ตรวจเช็คตอนเช้าของวันที่ <strong>19/10/2026</strong> (ซึ่งทุกคนเพิ่งสแกนเข้างานเช้า ยังไม่มีเวลาออกเย็นของวันนี้) แต่ต้องการดูในคอลัมน์ขวาสุดของตารางว่า <strong>เมื่อวานเย็น (18/10/2026)</strong> แต่ละคนสแกนออกงานกี่โมง</p>
-            <div class="overflow-x-auto border border-slate-200 rounded-lg">
-              <table class="w-full text-[11px] text-left border-collapse">
-                <thead class="bg-slate-100 text-slate-700">
-                  <tr><th class="p-1.5 border-b">ตำแหน่ง</th><th class="p-1.5 border-b">ชื่อ-สกุล</th><th class="p-1.5 border-b">วันที่ (คอลัมน์ C)</th><th class="p-1.5 border-b">เวลา (คอลัมน์ D)</th><th class="p-1.5 border-b">การแสดงผลในตารางหลัก</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 font-mono">
-                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล</td><td class="p-1.5 font-sans font-semibold">พันจ่าเอกสยาม แพทยารักษ์</td><td class="p-1.5">2026-10-18</td><td class="p-1.5">16:45:10</td><td class="p-1.5 font-sans text-slate-700">แสดงในคอลัมน์ <strong>"เวลาออกเย็น (วันก่อน)"</strong></td></tr>
-                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล</td><td class="p-1.5 font-sans font-semibold">พันจ่าเอกสยาม แพทยารักษ์</td><td class="p-1.5">2026-10-19</td><td class="p-1.5">08:04:22</td><td class="p-1.5 font-sans text-emerald-700 font-semibold">แสดงในคอลัมน์ <strong>"เวลาเข้า (เช้า)"</strong> ของวันที่ 19/10/2026</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-            <button type="button" data-ex-id="5" class="btn-run-example flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
-              🚀 กดทดลองจำลองแบบที่ 5 (ดูเวลาเช้าวันนี้ + เวลาออกเย็นเมื่อวาน)
-            </button>
-            <button type="button" data-ex-dl="5" class="btn-dl-example bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-medium text-xs px-3 py-2 rounded-lg transition">
-              📥 ดาวน์โหลดไฟล์ตัวอย่างแบบที่ 5 (.xlsx)
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
+    </div>
+  </div>
 
   <script>
-    // ========================================================
-    // SUPABASE INTEGRATION CONFIGURATION
-    // ========================================================
-    const SUPABASE_URL = 'https://louycthhlxmauphmjmsx.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_XxrOenamd5_zbwhU9w__Gg_gtspTFyS';
-    
-    let supabaseClient = null;
-    if (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('⚡ Supabase Client Connected');
+    // --------------------------------------------------------
+    // STORAGE & INITIAL STATE
+    // --------------------------------------------------------
+    const DEFAULT_ROSTER = [
+      { id: 1, fullname: "พันจ่าเอกสยาม แพทยารักษ์", dept: "ผู้บริหารท้องถิ่น", pos: "ปลัดเทศบาล" },
+      { id: 2, fullname: "นางสาวกันตา ธวาบุญรัศมี", dept: "สำนักปลัดเทศบาล", pos: "หัวหน้าสำนักปลัด" },
+      { id: 3, fullname: "นางสาวต้นกัญญา รัตนาวดี", dept: "สำนักปลัดเทศบาล", pos: "นักทรัพยากรบุคคล" },
+      { id: 4, fullname: "นางพิชาวีร์ เอมดวง", dept: "กองคลัง", pos: "เจ้าพนักงานจัดเก็บรายได้" },
+      { id: 5, fullname: "นายพิชญุตม์ เสริมพงษ์", dept: "กองช่าง", pos: "ผู้อำนวยการกองช่าง" }
+    ];
+
+    let roster = JSON.parse(localStorage.getItem('app_roster')) || DEFAULT_ROSTER;
+    let scans = JSON.parse(localStorage.getItem('app_scans')) || [];
+
+    // Save helpers
+    function saveData() {
+      localStorage.setItem('app_roster', JSON.stringify(roster));
+      localStorage.setItem('app_scans', JSON.stringify(scans));
     }
 
-    // ฟังก์ชันซิงค์ข้อมูลกับ Supabase (ตัวอย่างฟังก์ชันเรียกใช้งาน)
-    async function syncRosterToSupabase(newPerson) {
-      if (!supabaseClient) return;
-      try {
-        const { data, error } = await supabaseClient
-          .from('roster')
-          .insert([{
-            type: newPerson.type,
-            dept: newPerson.dept,
-            fullname: newPerson.fullname,
-            pos: newPerson.pos,
-            auto_added: newPerson.autoAdded || false
-          }]);
-        if (error) console.error('Supabase Roster Insert Error:', error);
-      } catch (err) {
-        console.error('Supabase sync error:', err);
-      }
-    }
-
-    async function syncScansToSupabase(scans) {
-      if (!supabaseClient || !scans || scans.length === 0) return;
-      try {
-        const payload = scans.map(s => ({
-          raw_cat: s.rawCat,
-          raw_name: s.rawName,
-          dt_str: s.dtStr
-        }));
-        const { data, error } = await supabaseClient
-          .from('scan_logs')
-          .insert(payload);
-        if (error) console.error('Supabase Scans Insert Error:', error);
-      } catch (err) {
-        console.error('Supabase sync error:', err);
-      }
-    }
-
-    // ========================================================
-    // INITIAL DATA & CONSTANTS
-    // ========================================================
-    const INITIAL_ROSTER = [{"id": 1, "type": "พนักงานเทศบาล", "dept": "ผู้บริหารท้องถิ่น", "fname": "พันจ่าเอกสยาม", "lname": "แพทยารักษ์", "pos": "ปลัดเทศบาล (นักบริหารงานท้องถิ่น)", "fullname": "พันจ่าเอกสยาม แพทยารักษ์"}, {"id": 2, "type": "พนักงานเทศบาล", "dept": "ผู้บริหารท้องถิ่น", "fname": "พันจ่าโทธงไชย", "lname": "พงสุภา", "pos": "รองปลัดเทศบาล (นักบริหารงานท้องถิ่น)", "fullname": "พันจ่าโทธงไชย พงสุภา"}, {"id": 3, "type": "พนักงานเทศบาล", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวกันตา", "lname": "ธวาบุญรัศมี", "pos": "หัวหน้าสำนักปลัดเทศบาล (นักบริหารงานทั่วไป)", "fullname": "นางสาวกันตา ธวาบุญรัศมี"}, {"id": 4, "type": "พนักงานเทศบาล", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวต้นกัญญา", "lname": "รัตนาวดี", "pos": "นักทรัพยากรบุคคล", "fullname": "นางสาวต้นกัญญา รัตนาวดี"}, {"id": 5, "type": "พนักงานเทศบาล", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวอัยยรัศมิ์", "lname": "ฝนเทียม", "pos": "เจ้าพนักงานธุรการ", "fullname": "นางสาวอัยยรัศมิ์ ฝนเทียม"}, {"id": 6, "type": "พนักงานเทศบาล", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวพัณณิตา", "lname": "พานเมือง", "pos": "นักประชาสัมพันธ์", "fullname": "นางสาวพัณณิตา พานเมือง"}, {"id": 7, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางพิชาวีร์", "lname": "เอมดวง", "pos": "เจ้าพนักงานจัดเก็บรายได้", "fullname": "นางพิชาวีร์ เอมดวง"}, {"id": 8, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางอังคณา", "lname": "สมหมาย", "pos": "เจ้าพนักงานจัดเก็บรายได้", "fullname": "นางอังคณา สมหมาย"}, {"id": 9, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางกาญจนา", "lname": "ประสานศรี", "pos": "หัวหน้าฝ่ายการเงินและบัญชี (นักบริหารงานการคลัง)", "fullname": "นางกาญจนา ประสานศรี"}, {"id": 10, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางบุณณิศา", "lname": "คงประเสริฐ", "pos": "เจ้าพนักงานการเงินและบัญชี", "fullname": "นางบุณณิศา คงประเสริฐ"}, {"id": 11, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางสาวฉวีวรรณ", "lname": "สาดา", "pos": "เจ้าพนักงานธุรการ", "fullname": "นางสาวฉวีวรรณ สาดา"}, {"id": 12, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นายธเนศ", "lname": "สารภี", "pos": "หัวหน้าฝ่ายพัสดุและทรัพย์สิน", "fullname": "นายธเนศ สารภี"}, {"id": 13, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางสาวลภัสรดา", "lname": "กันคล้อย", "pos": "นักวิชาการพัสดุ", "fullname": "นางสาวลภัสรดา กันคล้อย"}, {"id": 14, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางสาวดวงเดือน", "lname": "กางนอก", "pos": "เจ้าพนักงานพัสดุ", "fullname": "นางสาวดวงเดือน กางนอก"}, {"id": 15, "type": "พนักงานเทศบาล", "dept": "กองช่าง", "fname": "นายพิชญุตม์", "lname": "เสริมพงษ์", "pos": "ผู้อำนวยการกองช่าง (นักบริหารงานช่าง)", "fullname": "นายพิชญุตม์ เสริมพงษ์"}, {"id": 16, "type": "พนักงานเทศบาล", "dept": "กองช่าง", "fname": "นายธนะชัย", "lname": "แสนสุขสกุลชล", "pos": "หัวหน้าฝ่ายแบบแผนและก่อสร้าง (นักบริหารงานช่าง)", "fullname": "นายธนะชัย แสนสุขสกุลชล"}, {"id": 17, "type": "พนักงานเทศบาล", "dept": "กองช่าง", "fname": "นายเชิงวุฒิ", "lname": "เชวงกูล", "pos": "นายช่างโยธา", "fullname": "นายเชิงวุฒิ เชวงกูล"}, {"id": 18, "type": "พนักงานเทศบาล", "dept": "กองช่าง", "fname": "นางสาววลัยลักษณ์", "lname": "เตียวเจริญ", "pos": "เจ้าพนักงานธุรการ", "fullname": "นางสาววลัยลักษณ์ เตียวเจริญ"}, {"id": 19, "type": "พนักงานเทศบาล", "dept": "กองช่าง", "fname": "นายอมรเทพ", "lname": "กอบกุศล", "pos": "หัวหน้าฝ่ายควบคุมอาคาร (นักบริหารงานช่าง)", "fullname": "นายอมรเทพ กอบกุศล"}, {"id": 20, "type": "พนักงานเทศบาล", "dept": "กองช่าง", "fname": "นายอานนท์", "lname": "ศรีนนท์เรือง", "pos": "นายช่างโยธา", "fullname": "นายอานนท์ ศรีนนท์เรือง"}, {"id": 21, "type": "พนักงานเทศบาล", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายธีระวัฒน์", "lname": "ศรีสุวรรณ์", "pos": "หัวหน้าฝ่ายส่งเสริมสิ่งแวดล้อม", "fullname": "นายธีระวัฒน์ ศรีสุวรรณ์"}, {"id": 22, "type": "พนักงานเทศบาล", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวนุชนาฎ", "lname": "ฤกษ์มงคล", "pos": "นักวิชาการสุขาภิบาล", "fullname": "นางสาวนุชนาฎ ฤกษ์มงคล"}, {"id": 23, "type": "พนักงานเทศบาล", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวชิดชนก", "lname": "กันภัย", "pos": "เจ้าพนักงานธุรการ", "fullname": "นางสาวชิดชนก กันภัย"}, {"id": 24, "type": "พนักงานเทศบาล", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวศุภ์ธนินยา", "lname": "จำปาทอง", "pos": "หัวหน้าฝ่ายส่งเสริมสุขภาพ", "fullname": "นางสาวศุภ์ธนินยา จำปาทอง"}, {"id": 25, "type": "พนักงานเทศบาล", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวเขมมัสศิริ", "lname": "เนตร์มณี", "pos": "นักวิชาการสาธารณสุข", "fullname": "นางสาวเขมมัสศิริ เนตร์มณี"}, {"id": 26, "type": "พนักงานเทศบาล", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวจาฏุพัจน์", "lname": "ฉายวัฒนะ", "pos": "เจ้าพนักงานสาธารณสุข", "fullname": "นางสาวจาฏุพัจน์ ฉายวัฒนะ"}, {"id": 27, "type": "พนักงานเทศบาล", "dept": "กองการศึกษา", "fname": "นางสาวเชาวรา", "lname": "โคตรสำนวน", "pos": "นักวิชาการศึกษา", "fullname": "นางสาวเชาวรา โคตรสำนวน"}, {"id": 28, "type": "พนักงานเทศบาล", "dept": "กองการศึกษา", "fname": "นางสาวอรอุมา", "lname": "สิงห์นอก", "pos": "เจ้าพนักงานธุรการ", "fullname": "นางสาวอรอุมา สิงห์นอก"}, {"id": 29, "type": "พนักงานเทศบาล", "dept": "กองสวัสดิการสังคม", "fname": "นางสาวราตรี", "lname": "หินปรีชา", "pos": "ผู้อำนวยการกองสวัสดิการสังคม", "fullname": "นางสาวราตรี หินปรีชา"}, {"id": 30, "type": "พนักงานเทศบาล", "dept": "กองสวัสดิการสังคม", "fname": "นางสนิท", "lname": "สายบัว", "pos": "หัวหน้าฝ่ายพัฒนาชุมชน", "fullname": "นางสนิท สายบัว"}, {"id": 31, "type": "พนักงานเทศบาล", "dept": "กองสวัสดิการสังคม", "fname": "นางสาวมะลิ", "lname": "ศรีเมือง", "pos": "นักพัฒนาชุมชน", "fullname": "นางสาวมะลิ ศรีเมือง"}, {"id": 32, "type": "พนักงานเทศบาล", "dept": "กองสวัสดิการสังคม", "fname": "นายทรงศักดิ์", "lname": "โพธิ์ศรีรัตน์", "pos": "นักพัฒนาชุมชน", "fullname": "นายทรงศักดิ์ โพธิ์ศรีรัตน์"}, {"id": 33, "type": "พนักงานเทศบาล", "dept": "กองสวัสดิการสังคม", "fname": "นางสาวอรพรรณ", "lname": "หวานสนิท", "pos": "นักสังคมสงเคราะห์", "fullname": "นางสาวอรพรรณ หวานสนิท"}, {"id": 34, "type": "พนักงานเทศบาล", "dept": "กองสวัสดิการสังคม", "fname": "นายทักษพร", "lname": "เกียรติสุข", "pos": "นักสังคมสงเคราะห์", "fullname": "นายทักษพร เกียรติสุข"}, {"id": 35, "type": "พนักงานเทศบาล", "dept": "กองสวัสดิการสังคม", "fname": "นางสาวธนารัตน์", "lname": "ลิขิตมงคลสุข", "pos": "เจ้าพนักงานธุรการ", "fullname": "นางสาวธนารัตน์ ลิขิตมงคลสุข"}, {"id": 36, "type": "ลูกจ้างประจำ", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายบัญชา", "lname": "ชิดเชื้อ", "pos": "พนักงานขับเครื่องจักรกลขนาดเบา", "fullname": "นายบัญชา ชิดเชื้อ"}, {"id": 37, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวฐาปะนี", "lname": "เรืองประดับ", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นางสาวฐาปะนี เรืองประดับ"}, {"id": 38, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวกัลยา", "lname": "สาโท", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นางสาวกัลยา สาโท"}, {"id": 39, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นายอธิชาติ", "lname": "ไตรเดช", "pos": "พนักงานขับรถยนต์", "fullname": "นายอธิชาติ ไตรเดช"}, {"id": 40, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวณัฐธนภัสสร์", "lname": "สีชมพู", "pos": "ผู้ช่วยนักวิเคราะห์ประชาสัมพันธ์", "fullname": "นางสาวณัฐธนภัสสร์ สีชมพู"}, {"id": 41, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นางพชร", "lname": "ประทุมตรี", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นางพชร ประทุมตรี"}, {"id": 42, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวจินตนา", "lname": "จันทร์ทอง", "pos": "ผู้ช่วยนักประชาสัมพันธ์", "fullname": "นางสาวจินตนา จันทร์ทอง"}, {"id": 43, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวพรพรรณ", "lname": "พยนต์", "pos": "ผู้ช่วยนักประชาสัมพันธ์", "fullname": "นางสาวพรพรรณ พยนต์"}, {"id": 44, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นายจีรวุฒิ", "lname": "แสงมา", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นายจีรวุฒิ แสงมา"}, {"id": 45, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นางธิดาพร", "lname": "นรสิงห์", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นางธิดาพร นรสิงห์"}, {"id": 46, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวอมิตยา", "lname": "ธวาบุญรัศมี", "pos": "ผู้ช่วยนิติกร", "fullname": "นางสาวอมิตยา ธวาบุญรัศมี"}, {"id": 47, "type": "พนักงานจ้างตามภารกิจ", "dept": "สำนักปลัดเทศบาล", "fname": "นายธนากร", "lname": "มงคลศิลป์", "pos": "พนักงานขับรถยนต์", "fullname": "นายธนากร มงคลศิลป์"}, {"id": 48, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองคลัง", "fname": "นางสาวนิภารัตน์", "lname": "วังกาวี", "pos": "ผู้ช่วยนักวิชาการจัดเก็บรายได้", "fullname": "นางสาวนิภารัตน์ วังกาวี"}, {"id": 49, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองคลัง", "fname": "นางสาววรกัญญา", "lname": "เทศสมบูรณ์", "pos": "ผู้ช่วยนักวิชาการจัดเก็บรายได้", "fullname": "นางสาววรกัญญา เทศสมบูรณ์"}, {"id": 50, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองคลัง", "fname": "นางสาวชลธิฌา", "lname": "นิลชา", "pos": "ผู้ช่วยเจ้าพนักงานการเงินและบัญชี", "fullname": "นางสาวชลธิฌา นิลชา"}, {"id": 51, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองคลัง", "fname": "นายประกาศิต", "lname": "เรืองประดับ", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นายประกาศิต เรืองประดับ"}, {"id": 52, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองคลัง", "fname": "นางสาวศิริลักษณ์", "lname": "สถิตย์เสถียร", "pos": "ผู้ช่วยนักวิชาการพัสดุ", "fullname": "นางสาวศิริลักษณ์ สถิตย์เสถียร"}, {"id": 53, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองคลัง", "fname": "นางสาววรวลัญช์", "lname": "จันทมา", "pos": "ผู้ช่วยนักวิชาการพัสดุ", "fullname": "นางสาววรวลัญช์ จันทมา"}, {"id": 54, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองคลัง", "fname": "นางสาววิลาวรรณ", "lname": "นิ่มวิลัย", "pos": "ผู้ช่วยเจ้าพนักงานพัสดุ", "fullname": "นางสาววิลาวรรณ นิ่มวิลัย"}, {"id": 55, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองคลัง", "fname": "นางสาวศิรประภา", "lname": "แสงเงิน", "pos": "ผู้ช่วยเจ้าพนักงานพัสดุ", "fullname": "นางสาวศิรประภา แสงเงิน"}, {"id": 56, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองคลัง", "fname": "นายฐิติภัสร์", "lname": "บุตตรี", "pos": "พนักงานขับรถยนต์", "fullname": "นายฐิติภัสร์ บุตตรี"}, {"id": 57, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองช่าง", "fname": "นางประไพ", "lname": "ศรีนนท์เรือง", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นางประไพ ศรีนนท์เรือง"}, {"id": 58, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองช่าง", "fname": "นายสามารถ", "lname": "พ้นภัยพาล", "pos": "พนักงานขับรถยนต์", "fullname": "นายสามารถ พ้นภัยพาล"}, {"id": 59, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองช่าง", "fname": "นายสังเวียน", "lname": "แสงจันทร์", "pos": "ช่างปูน", "fullname": "นายสังเวียน แสงจันทร์"}, {"id": 60, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองช่าง", "fname": "นายประสิทธิ์", "lname": "หนุประเสริฐ", "pos": "ช่างไม้", "fullname": "นายประสิทธิ์ หนุประเสริฐ"}, {"id": 61, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองช่าง", "fname": "นายภัควรากฤตย์", "lname": "โรจน์วิชญ์คุณ", "pos": "ผู้ช่วยนายช่างโยธา", "fullname": "นายภัควรากฤตย์ โรจน์วิชญ์คุณ"}, {"id": 62, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองช่าง", "fname": "นางสาวปัณฑารีย์", "lname": "สุขศร", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นางสาวปัณฑารีย์ สุขศร"}, {"id": 63, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองช่าง", "fname": "นายชลิต", "lname": "สันหะรักษ์", "pos": "พนักงานขับเครื่องจักรกลขนาดเบา", "fullname": "นายชลิต สันหะรักษ์"}, {"id": 64, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองช่าง", "fname": "นายบุญลือ", "lname": "แย้มสุวรรณ", "pos": "พนักงานขับเครื่องจักรกลขนาดเบา", "fullname": "นายบุญลือ แย้มสุวรรณ"}, {"id": 65, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองช่าง", "fname": "นายอิทธิพล", "lname": "ชูเชิด", "pos": "พนักงานขับเครื่องจักรกลขนาดเบา", "fullname": "นายอิทธิพล ชูเชิด"}, {"id": 66, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายแดน", "lname": "บุญมี", "pos": "คนงานประจำรถขยะ", "fullname": "นายแดน บุญมี"}, {"id": 67, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวณัฐริกา", "lname": "หลวงพิทักษ์ชุมพล", "pos": "ผู้ช่วยนักวิชาการสาธารณสุข", "fullname": "นางสาวณัฐริกา หลวงพิทักษ์ชุมพล"}, {"id": 68, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวกิ่งกาญจน์", "lname": "อยู่คง", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นางสาวกิ่งกาญจน์ อยู่คง"}, {"id": 69, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวกนกรัตน์", "lname": "ขาวสุทธิ", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นางสาวกนกรัตน์ ขาวสุทธิ"}, {"id": 70, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายพิเจน", "lname": "จงจำ", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นายพิเจน จงจำ"}, {"id": 71, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายบุญสืบ", "lname": "แสงมา", "pos": "พนักงานขับรถยนต์", "fullname": "นายบุญสืบ แสงมา"}, {"id": 72, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองการศึกษา", "fname": "นางสาวศาตนันท์", "lname": "วิชญเจริญกุล", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นางสาวศาตนันท์ วิชญเจริญกุล"}, {"id": 73, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองการศึกษา", "fname": "นางสาวพิชญา", "lname": "จันทรกานตานนท์", "pos": "ผู้ช่วยนักสันทนาการ", "fullname": "นางสาวพิชญา จันทรกานตานนท์"}, {"id": 74, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองการศึกษา", "fname": "นางสาวณัฐณิชา", "lname": "หวานสนิท", "pos": "ผู้ช่วยนักวิชาการศึกษา", "fullname": "นางสาวณัฐณิชา หวานสนิท"}, {"id": 75, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองสวัสดิการสังคม", "fname": "นางสุภารัตน์", "lname": "เดชาติวงศ์ ณ อยุธยา", "pos": "ผู้ช่วยนักพัฒนาชุมชน", "fullname": "นางสุภารัตน์ เดชาติวงศ์ ณ อยุธยา"}, {"id": 76, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองสวัสดิการสังคม", "fname": "นางสาววิภาดา", "lname": "ธาราศักดิ์", "pos": "ผู้ช่วยนักพัฒนาชุมชน", "fullname": "นางสาววิภาดา ธาราศักดิ์"}, {"id": 77, "type": "พนักงานจ้างตามภารกิจ", "dept": "กองสวัสดิการสังคม", "fname": "นางสาวอรณิชา", "lname": "ส่งเสริม", "pos": "ผู้ช่วยเจ้าพนักงานธุรการ", "fullname": "นางสาวอรณิชา ส่งเสริม"}, {"id": 78, "type": "พนักงานจ้างทั่วไป", "dept": "สำนักปลัดเทศบาล", "fname": "นายปาณัสม์", "lname": "ประทุมตรี", "pos": "คนงาน", "fullname": "นายปาณัสม์ ประทุมตรี"}, {"id": 79, "type": "พนักงานจ้างทั่วไป", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวสมปรารถนา", "lname": "พ้นภัยพาล", "pos": "คนงาน", "fullname": "นางสาวสมปรารถนา พ้นภัยพาล"}, {"id": 80, "type": "พนักงานจ้างทั่วไป", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวนกเอี้ยง", "lname": "ยืนยง", "pos": "คนงาน", "fullname": "นางสาวนกเอี้ยง ยืนยง"}, {"id": 81, "type": "พนักงานจ้างทั่วไป", "dept": "สำนักปลัดเทศบาล", "fname": "นายแรม", "lname": "แก้วพิทักษ์", "pos": "คนงาน", "fullname": "นายแรม แก้วพิทักษ์"}, {"id": 82, "type": "พนักงานจ้างทั่วไป", "dept": "สำนักปลัดเทศบาล", "fname": "นายอุทิศ", "lname": "เอี่ยมอ่ำ", "pos": "คนงาน", "fullname": "นายอุทิศ เอี่ยมอ่ำ"}, {"id": 83, "type": "พนักงานจ้างทั่วไป", "dept": "สำนักปลัดเทศบาล", "fname": "นางสมจิตร", "lname": "สุดจิตร์", "pos": "คนงาน", "fullname": "นางสมจิตร สุดจิตร์"}, {"id": 84, "type": "พนักงานจ้างทั่วไป", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวสาธิตา", "lname": "ประดับ", "pos": "คนงาน", "fullname": "นางสาวสาธิตา ประดับ"}, {"id": 85, "type": "พนักงานจ้างทั่วไป", "dept": "กองคลัง", "fname": "นายจิรวัฒน์", "lname": "วิวัฒนชาติ", "pos": "คนงาน", "fullname": "นายจิรวัฒน์ วิวัฒนชาติ"}, {"id": 86, "type": "พนักงานจ้างทั่วไป", "dept": "กองคลัง", "fname": "นางสาววิไลลักษณ์", "lname": "ไชยงาม", "pos": "คนงาน", "fullname": "นางสาววิไลลักษณ์ ไชยงาม"}, {"id": 87, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวใบเฟิร์น", "lname": "ชัยวิเชียร", "pos": "คนงาน", "fullname": "นางสาวใบเฟิร์น ชัยวิเชียร"}, {"id": 88, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายจักรกฤษ", "lname": "ศรีระกิจ", "pos": "คนงาน", "fullname": "นายจักรกฤษ ศรีระกิจ"}, {"id": 89, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายสุรีย์", "lname": "บุญเทศ", "pos": "พนักงานขับเครื่องจักรกลขนาดเบา", "fullname": "นายสุรีย์ บุญเทศ"}, {"id": 90, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายครรชิต", "lname": "ลาภอุดมทรัพย์", "pos": "คนงาน", "fullname": "นายครรชิต ลาภอุดมทรัพย์"}, {"id": 91, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายจิรายุทธ์", "lname": "มุงคุณคำซาว", "pos": "คนงาน", "fullname": "นายจิรายุทธ์ มุงคุณคำซาว"}, {"id": 92, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวอ้อย", "lname": "อยู่คง", "pos": "คนงาน", "fullname": "นางสาวอ้อย อยู่คง"}, {"id": 93, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวชุติมา", "lname": "มีทรัพย์", "pos": "คนงาน", "fullname": "นางสาวชุติมา มีทรัพย์"}, {"id": 94, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายสุนทร", "lname": "ไชยงาม", "pos": "คนงาน", "fullname": "นายสุนทร ไชยงาม"}, {"id": 95, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายสันทัสน์", "lname": "เอี่ยมเอก", "pos": "คนงาน", "fullname": "นายสันทัสน์ เอี่ยมเอก"}, {"id": 96, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาววิลาวัลย์", "lname": "สวนทอง", "pos": "คนงาน", "fullname": "นางสาววิลาวัลย์ สวนทอง"}, {"id": 97, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวนาง", "lname": "ทองนอก", "pos": "คนงาน", "fullname": "นางสาวนาง ทองนอก"}, {"id": 98, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายสมจิตต์", "lname": "ก้อนแก้ว", "pos": "คนงาน", "fullname": "นายสมจิตต์ ก้อนแก้ว"}, {"id": 99, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายกฤษณะ", "lname": "อิ่มทิม", "pos": "คนงาน", "fullname": "นายกฤษณะ อิ่มทิม"}, {"id": 100, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายจำเริญ", "lname": "ขันสุวรรณ", "pos": "คนงาน", "fullname": "นายจำเริญ ขันสุวรรณ"}, {"id": 101, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวกุหลาบ", "lname": "ยืนยง", "pos": "คนงาน", "fullname": "นางสาวกุหลาบ ยืนยง"}, {"id": 102, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวณัฏฐธิดา", "lname": "คงคาหลวง", "pos": "คนงาน", "fullname": "นางสาวณัฏฐธิดา คงคาหลวง"}, {"id": 103, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายกมลเดช", "lname": "ลอยเลื้อน", "pos": "คนงาน", "fullname": "นายกมลเดช ลอยเลื้อน"}, {"id": 104, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวนิรมล", "lname": "ฮกหลี", "pos": "คนสวน", "fullname": "นางสาวนิรมล ฮกหลี"}, {"id": 105, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายธงชัย", "lname": "บุญผึ้ง", "pos": "คนสวน", "fullname": "นายธงชัย บุญผึ้ง"}, {"id": 106, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางบังเอิน", "lname": "ลาภอุดมทรัพย์", "pos": "คนสวน", "fullname": "นางบังเอิน ลาภอุดมทรัพย์"}, {"id": 107, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายชูชาติ", "lname": "อินทรีย์", "pos": "พนักงานขับเครื่องจักรกลขนาดเบา", "fullname": "นายชูชาติ อินทรีย์"}, {"id": 108, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายปรีชา", "lname": "เยี่ยมชัยภูมิ", "pos": "พนักงานขับเครื่องจักรกลขนาดเบา", "fullname": "นายปรีชา เยี่ยมชัยภูมิ"}, {"id": 109, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายสายยนต์", "lname": "สังวาลย์", "pos": "พนักงานขับเครื่องจักรกลขนาดเบา", "fullname": "นายสายยนต์ สังวาลย์"}, {"id": 110, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวบุณยานุช", "lname": "ชัยชายเรืองหิรัญ", "pos": "คนงาน", "fullname": "นางสาวบุณยานุช ชัยชายเรืองหิรัญ"}, {"id": 111, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายอาทิตย์", "lname": "ใจพุก", "pos": "คนงาน", "fullname": "นายอาทิตย์ ใจพุก"}, {"id": 112, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายธนธิป", "lname": "สินสงวน", "pos": "คนงาน", "fullname": "นายธนธิป สินสงวน"}, {"id": 113, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวณัฐหทัย", "lname": "บุดดา", "pos": "คนงาน", "fullname": "นางสาวณัฐหทัย บุดดา"}, {"id": 114, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายสุกฤษฎ์", "lname": "เดี่ยวเชื้อ", "pos": "คนงาน", "fullname": "นายสุกฤษฎ์ เดี่ยวเชื้อ"}, {"id": 115, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายสีทอง", "lname": "บุญผึ้ง", "pos": "คนงาน", "fullname": "นายสีทอง บุญผึ้ง"}, {"id": 116, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวยุพาพร", "lname": "มุงคุณคำซาว", "pos": "คนงาน", "fullname": "นางสาวยุพาพร มุงคุณคำซาว"}, {"id": 117, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายศราวุฒิ", "lname": "พรมสิงห์", "pos": "คนงาน", "fullname": "นายศราวุฒิ พรมสิงห์"}, {"id": 118, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายรัตนพล", "lname": "บุญมา", "pos": "คนงาน", "fullname": "นายรัตนพล บุญมา"}, {"id": 119, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นางสาวเกศรินทร์", "lname": "หินทอง", "pos": "คนงาน", "fullname": "นางสาวเกศรินทร์ หินทอง"}, {"id": 120, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายอนุชิต", "lname": "มุงคุณคำชาว", "pos": "คนงาน", "fullname": "นายอนุชิต มุงคุณคำชาว"}, {"id": 121, "type": "พนักงานจ้างทั่วไป", "dept": "กองช่าง", "fname": "นายประพันธ์", "lname": "ฉายยา", "pos": "คนงาน", "fullname": "นายประพันธ์ ฉายยา"}, {"id": 122, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางเจริญวัย", "lname": "สดใส", "pos": "คนงาน", "fullname": "นางเจริญวัย สดใส"}, {"id": 123, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายเกษม", "lname": "พิเนตรทัน", "pos": "คนงาน", "fullname": "นายเกษม พิเนตรทัน"}, {"id": 124, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายจิรัฏฐ์", "lname": "ฮกหลี", "pos": "คนงาน", "fullname": "นายจิรัฏฐ์ ฮกหลี"}, {"id": 125, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวปัสมา", "lname": "พ้นภัยพาล", "pos": "คนงาน", "fullname": "นางสาวปัสมา พ้นภัยพาล"}, {"id": 126, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายประยุทธ", "lname": "บุญรอด", "pos": "คนงาน", "fullname": "นายประยุทธ บุญรอด"}, {"id": 127, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวสุมาลี", "lname": "บุญเทศ", "pos": "คนงาน", "fullname": "นางสาวสุมาลี บุญเทศ"}, {"id": 128, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายดำรงศักดิ์", "lname": "ชะบา", "pos": "คนงาน", "fullname": "นายดำรงศักดิ์ ชะบา"}, {"id": 129, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวสุรีรัตน์", "lname": "ทันบุตร", "pos": "คนงาน", "fullname": "นางสาวสุรีรัตน์ ทันบุตร"}, {"id": 130, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวสุวรรณ", "lname": "บุญมา", "pos": "คนงาน", "fullname": "นางสาวสุวรรณ บุญมา"}, {"id": 131, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวมยุรี", "lname": "เจริญอาจ", "pos": "คนงาน", "fullname": "นางสาวมยุรี เจริญอาจ"}, {"id": 132, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวดารากา", "lname": "พฤฒิทรัพย์", "pos": "คนงาน", "fullname": "นางสาวดารากา พฤฒิทรัพย์"}, {"id": 133, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาวอมรรัตน์", "lname": "มีสุข", "pos": "คนงาน", "fullname": "นางสาวอมรรัตน์ มีสุข"}, {"id": 134, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นางสาววรัญญา", "lname": "ไชยลังการ", "pos": "คนงาน", "fullname": "นางสาววรัญญา ไชยลังการ"}, {"id": 135, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายสรรเสริญ", "lname": "จันทร์บาง", "pos": "คนงาน", "fullname": "นายสรรเสริญ จันทร์บาง"}, {"id": 136, "type": "พนักงานจ้างทั่วไป", "dept": "กองสาธารณสุขและสิ่งแวดล้อม", "fname": "นายลักษณ์", "lname": "แก้วพิทักษ์", "pos": "คนงาน", "fullname": "นายลักษณ์ แก้วพิทักษ์"}, {"id": 137, "type": "พนักงานจ้างทั่วไป", "dept": "กองการศึกษา", "fname": "นางสาวภัทรวดี", "lname": "ทิศรักษ์", "pos": "คนงาน", "fullname": "นางสาวภัทรวดี ทิศรักษ์"}, {"id": 138, "type": "พนักงานจ้างทั่วไป", "dept": "กองการศึกษา", "fname": "นางสาววิมลสิริ", "lname": "แย้มกลิ่น", "pos": "คนงาน", "fullname": "นางสาววิมลสิริ แย้มกลิ่น"}, {"id": 139, "type": "พนักงานจ้างทั่วไป", "dept": "กองการศึกษา", "fname": "นายดอน", "lname": "ลีฮุง", "pos": "คนงาน", "fullname": "นายดอน ลีฮุง"}, {"id": 140, "type": "พนักงานจ้างทั่วไป", "dept": "กองการศึกษา", "fname": "นายสรวุฒิ", "lname": "ยืนยง", "pos": "พนักงานขับรถยนต์", "fullname": "นายสรวุฒิ ยืนยง"}, {"id": 141, "type": "พนักงานจ้างทั่วไป", "dept": "กองสวัสดิการสังคม", "fname": "นายสนธยา", "lname": "เตชะมา", "pos": "พนักงานขับรถยนต์", "fullname": "นายสนธยา เตชะมา"}, {"id": 142, "type": "พนักงานจ้างทั่วไป", "dept": "กองสวัสดิการสังคม", "fname": "นางสาววิวาภร", "lname": "สาครสูงเนิน", "pos": "คนงาน", "fullname": "นางสาววิวาภร สาครสูงเนิน"}];
-    const ALIAS_MAP = {"นุชนาฏฤกษ์มงคล": "นุชนาฎฤกษ์มงคล", "ศิริลักษณ์สถิตย์เสถียร์": "ศิริลักษณ์สถิตย์เสถียร", "ประสิทธิ์หนูประเสริฐ": "ประสิทธิ์หนุประเสริฐ", "ปัณฑรีย์สุขศร": "ปัณฑารีย์สุขศร", "สุภารัตน์เดชาติวงศ์ณอยุ": "สุภารัตน์เดชาติวงศ์ณอยุธยา", "ณัฐณชาหวานสนิท": "ณัฐณิชาหวานสนิท", "ภัควรกฤตย์โรจน์วิชญ์คุณ": "ภัควรากฤตย์โรจน์วิชญ์คุณ", "ณัฎฐธิดาคงคาหลวง": "ณัฏฐธิดาคงคาหลวง", "สุกฤษฐ์เดี่ยวเชื่อ": "สุกฤษฎ์เดี่ยวเชื้อ", "ภัทราวดีทิศรักษ์": "ภัทรวดีทิศรักษ์", "จิรัฎฐ์ฮกหลี": "จิรัฏฐ์ฮกหลี", "จิรายุทธมุงคุณคำซาว": "จิรายุทธ์มุงคุณคำซาว", "วรัญญาไชยลังกา": "วรัญญาไชยลังการ", "อนุชิตมุงคุณคำซาว": "อนุชิตมุงคุณคำชาว", "บุณยานุชชัยชาญ": "บุณยานุชชัยชายเรืองหิรัญ"};
-    const ALIAS_LIST = [{"rawKey": "นุชนาฏฤกษ์มงคล", "masterKey": "นุชนาฎฤกษ์มงคล", "rawName": "นุชนาฏ  ฤกษ์มงคล", "masterName": "นางสาวนุชนาฎ ฤกษ์มงคล", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "ศิริลักษณ์สถิตย์เสถียร์", "masterKey": "ศิริลักษณ์สถิตย์เสถียร", "rawName": "ศิริลักษณ์ สถิตย์เสถียร์", "masterName": "นางสาวศิริลักษณ์ สถิตย์เสถียร", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "ประสิทธิ์หนูประเสริฐ", "masterKey": "ประสิทธิ์หนุประเสริฐ", "rawName": "ประสิทธิ์ หนูประเสริฐ", "masterName": "นายประสิทธิ์ หนุประเสริฐ", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "ปัณฑรีย์สุขศร", "masterKey": "ปัณฑารีย์สุขศร", "rawName": "นางสาวปัณฑรีย์ สุขศร", "masterName": "นางสาวปัณฑารีย์ สุขศร", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "สุภารัตน์เดชาติวงศ์ณอยุ", "masterKey": "สุภารัตน์เดชาติวงศ์ณอยุธยา", "rawName": "สุภารัตน์ เดชาติวงศ์ณอยุ", "masterName": "นางสุภารัตน์ เดชาติวงศ์ ณ อยุธยา", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "ณัฐณชาหวานสนิท", "masterKey": "ณัฐณิชาหวานสนิท", "rawName": "ณัฐณชา หวานสนิท", "masterName": "นางสาวณัฐณิชา หวานสนิท", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "ภัควรกฤตย์โรจน์วิชญ์คุณ", "masterKey": "ภัควรากฤตย์โรจน์วิชญ์คุณ", "rawName": "ภัควรกฤตย์ โรจน์วิชญ์คุณ", "masterName": "นายภัควรากฤตย์ โรจน์วิชญ์คุณ", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "ณัฎฐธิดาคงคาหลวง", "masterKey": "ณัฏฐธิดาคงคาหลวง", "rawName": "นางสาวณัฎฐธิดา คงคาหลวง", "masterName": "นางสาวณัฏฐธิดา คงคาหลวง", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "สุกฤษฐ์เดี่ยวเชื่อ", "masterKey": "สุกฤษฎ์เดี่ยวเชื้อ", "rawName": "นายสุกฤษฐ์ เดี่ยวเชื่อ", "masterName": "นายสุกฤษฎ์ เดี่ยวเชื้อ", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "ภัทราวดีทิศรักษ์", "masterKey": "ภัทรวดีทิศรักษ์", "rawName": "ภัทราวดี  ทิศรักษ์", "masterName": "นางสาวภัทรวดี ทิศรักษ์", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "จิรัฎฐ์ฮกหลี", "masterKey": "จิรัฏฐ์ฮกหลี", "rawName": "จิรัฎฐ์  ฮกหลี", "masterName": "นายจิรัฏฐ์ ฮกหลี", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "จิรายุทธมุงคุณคำซาว", "masterKey": "จิรายุทธ์มุงคุณคำซาว", "rawName": "จิรายุทธ  มุงคุณคำซาว", "masterName": "นายจิรายุทธ์ มุงคุณคำซาว", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "วรัญญาไชยลังกา", "masterKey": "วรัญญาไชยลังการ", "rawName": "วรัญญา ไชยลังกา", "masterName": "นางสาววรัญญา ไชยลังการ", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "อนุชิตมุงคุณคำซาว", "masterKey": "อนุชิตมุงคุณคำชาว", "rawName": "อนุชิต  มุงคุณคำซาว", "masterName": "นายอนุชิต มุงคุณคำชาว", "note": "ค่อนข้างสูง — ตรวจสอบได้"}, {"rawKey": "บุณยานุชชัยชาญ", "masterKey": "บุณยานุชชัยชายเรืองหิรัญ", "rawName": "บุณยานุช ชัยชาญ", "masterName": "นางสาวบุณยานุช ชัยชายเรืองหิรัญ", "note": "เทียบชื่อสกุลเดิม/สกุลย่อในเครื่องสแกนกับทะเบียนหลัก"}];
-    const INITIAL_SCANS = [{"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "กันตา ธวาบุญรัศมี", "dtStr": "2026-10-14 08:22:49"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "กันตา ธวาบุญรัศมี", "dtStr": "2026-10-14 16:43:14"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "พัณณิตา พานเมือง", "dtStr": "2026-10-14 08:18:23"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "พัณณิตา พานเมือง", "dtStr": "2026-10-14 16:58:20"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ดวงเดือน กางนอก", "dtStr": "2026-10-14 08:08:11"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ดวงเดือน กางนอก", "dtStr": "2026-10-14 16:30:04"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "บุณณิศา คงประเสริฐ", "dtStr": "2026-10-14 08:16:35"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "บุณณิศา คงประเสริฐ", "dtStr": "2026-10-14 19:34:22"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "อังคณา สมหมาย", "dtStr": "2026-10-14 11:45:50"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "อังคณา สมหมาย", "dtStr": "2026-10-14 16:34:21"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "พิชญุตม์ เสริมพงษ์", "dtStr": "2026-10-14 08:26:59"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "พิชญุตม์ เสริมพงษ์", "dtStr": "2026-10-14 17:53:56"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "อมรเทพ กอบกุศล", "dtStr": "2026-10-14 07:48:02"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "อมรเทพ กอบกุศล", "dtStr": "2026-10-14 17:11:53"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "อานนท์ ศรีนนท์เรือง", "dtStr": "2026-10-14 08:17:12"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "อานนท์ ศรีนนท์เรือง", "dtStr": "2026-10-14 16:54:50"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "วลัยลักษณ์ เตียวเจริญ", "dtStr": "2026-10-14 08:20:39"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "วลัยลักษณ์ เตียวเจริญ", "dtStr": "2026-10-14 16:45:36"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "บัญชา ชิดเชื้อ", "dtStr": "2026-10-14 08:06:57"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "บัญชา ชิดเชื้อ", "dtStr": "2026-10-14 16:31:28"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "อรพรรณ หวานสนิท", "dtStr": "2026-10-14 08:03:26"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "อรพรรณ หวานสนิท", "dtStr": "2026-10-14 17:34:41"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "มะลิ ศรีเมือง", "dtStr": "2026-10-14 08:11:49"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "มะลิ ศรีเมือง", "dtStr": "2026-10-14 19:23:48"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ธนารัตน์ ลิขิตมงคลสุข", "dtStr": "2026-10-14 08:08:47"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ธนารัตน์ ลิขิตมงคลสุข", "dtStr": "2026-10-14 16:57:44"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "พิชาวีร์ เอมดวง", "dtStr": "2026-10-14 08:15:01"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "พิชาวีร์ เอมดวง", "dtStr": "2026-10-14 17:53:24"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "เขมมัสศิริ เนตร์มณี", "dtStr": "2026-10-14 08:24:04"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "เขมมัสศิริ เนตร์มณี", "dtStr": "2026-10-14 16:36:16"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "นางสาวชิดชนก กันภัย", "dtStr": "2026-10-14 08:22:29"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "นางสาวชิดชนก กันภัย", "dtStr": "2026-10-14 16:32:41"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ทรงศักดิ์ โพธิ์ศรีรัตน์", "dtStr": "2026-10-14 08:10:26"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ทรงศักดิ์ โพธิ์ศรีรัตน์", "dtStr": "2026-10-14 16:43:48"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "จาฏุพัจน์ ฉายวัฒนะ", "dtStr": "2026-10-14 08:26:31"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "จาฏุพัจน์ ฉายวัฒนะ", "dtStr": "2026-10-14 17:11:56"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ฉวีวรรณ  สาดา", "dtStr": "2026-10-14 08:15:30"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ฉวีวรรณ  สาดา", "dtStr": "2026-10-14 17:43:09"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ธีระวัฒน์ ศรีสุวรรณ์", "dtStr": "2026-10-14 08:06:13"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ธีระวัฒน์ ศรีสุวรรณ์", "dtStr": "2026-10-14 17:11:03"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ศุภ์ธนินยา จำปาทอง", "dtStr": "2026-10-14 08:22:25"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ศุภ์ธนินยา จำปาทอง", "dtStr": "2026-10-14 16:45:57"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ราตรี หินปรีชา", "dtStr": "2026-10-14 07:42:37"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ราตรี หินปรีชา", "dtStr": "2026-10-14 16:44:17"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "สนิท สายบัว", "dtStr": "2026-10-14 08:15:34"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "สนิท สายบัว", "dtStr": "2026-10-14 16:34:38"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ธงไชย พงสุภา", "dtStr": "2026-10-14 08:26:52"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ธงไชย พงสุภา", "dtStr": "2026-10-14 19:09:40"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "เชาวรา  โคตรสำนวน", "dtStr": "2026-10-14 09:19:19"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "เชาวรา  โคตรสำนวน", "dtStr": "2026-10-14 09:20:44"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "เชาวรา  โคตรสำนวน", "dtStr": "2026-10-14 16:33:02"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "กาญจนา ประสานศรี", "dtStr": "2026-10-14 07:53:12"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "กาญจนา ประสานศรี", "dtStr": "2026-10-14 16:37:44"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ต้นกัญญา รัตนาวดี", "dtStr": "2026-10-14 07:46:39"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ต้นกัญญา รัตนาวดี", "dtStr": "2026-10-14 17:52:47"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "เชิงวุฒิ  เชวงกูล", "dtStr": "2026-10-14 07:39:25"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "เชิงวุฒิ  เชวงกูล", "dtStr": "2026-10-14 16:45:10"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ลภัสรดา  กันคล้อย", "dtStr": "2026-10-14 08:11:11"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ลภัสรดา  กันคล้อย", "dtStr": "2026-10-14 16:31:51"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "นุชนาฏ  ฤกษ์มงคล", "dtStr": "2026-10-14 08:13:15"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "นุชนาฏ  ฤกษ์มงคล", "dtStr": "2026-10-14 17:25:04"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ทักษพร  เกียรติสุข", "dtStr": "2026-10-14 08:07:35"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "ทักษพร  เกียรติสุข", "dtStr": "2026-10-14 16:44:13"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "นายธนะชัย แสนสุขสกุลชล", "dtStr": "2026-10-14 08:06:04"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "นายธนะชัย แสนสุขสกุลชล", "dtStr": "2026-10-14 16:45:24"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "นายธเนศ สารภี", "dtStr": "2026-10-14 07:22:05"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "นายธเนศ สารภี", "dtStr": "2026-10-14 16:54:21"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "พันจ่าเอกสยาม แพทยารักษ์", "dtStr": "2026-10-14 08:20:19"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "พันจ่าเอกสยาม แพทยารักษ์", "dtStr": "2026-10-14 16:38:44"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "พชร ประทุมตรี", "dtStr": "2026-10-14 08:20:59"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "พชร ประทุมตรี", "dtStr": "2026-10-14 16:41:12"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "จินตนา จันทร์ทอง", "dtStr": "2026-10-14 08:05:59"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "จินตนา จันทร์ทอง", "dtStr": "2026-10-14 16:46:20"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ศิริลักษณ์ สถิตย์เสถียร์", "dtStr": "2026-10-14 08:22:53"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ศิริลักษณ์ สถิตย์เสถียร์", "dtStr": "2026-10-14 16:33:06"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "กัลยา สาโท", "dtStr": "2026-10-14 08:27:26"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "กัลยา สาโท", "dtStr": "2026-10-14 16:39:53"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ธนากร มงคลศิลป์", "dtStr": "2026-10-14 08:02:22"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ธนากร มงคลศิลป์", "dtStr": "2026-10-14 16:33:55"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ประไพ ศรีนนท์เรือง", "dtStr": "2026-10-14 08:17:53"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ประไพ ศรีนนท์เรือง", "dtStr": "2026-10-14 16:59:12"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "อิทธิพล ชูเชิด", "dtStr": "2026-10-14 07:57:45"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "อิทธิพล ชูเชิด", "dtStr": "2026-10-14 16:48:30"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "สามารถ พ้นภัยพาล", "dtStr": "2026-10-14 07:55:10"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "สามารถ พ้นภัยพาล", "dtStr": "2026-10-14 16:30:50"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "สังเวียน แสงจันทร์", "dtStr": "2026-10-14 07:21:11"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "สังเวียน แสงจันทร์", "dtStr": "2026-10-14 16:33:54"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ประสิทธิ์ หนูประเสริฐ", "dtStr": "2026-10-14 08:08:06"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ประสิทธิ์ หนูประเสริฐ", "dtStr": "2026-10-14 16:35:00"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "บุญสืบ แสงมา", "dtStr": "2026-10-14 07:53:04"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "บุญสืบ แสงมา", "dtStr": "2026-10-14 16:32:52"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "กิ่งกาญจน์ อยู่คง", "dtStr": "2026-10-14 08:37:09"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "กิ่งกาญจน์ อยู่คง", "dtStr": "2026-10-14 16:32:38"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ชลิต สันหะรักษ์", "dtStr": "2026-10-14 08:15:26"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ชลิต สันหะรักษ์", "dtStr": "2026-10-14 16:31:20"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "แดน บุญมี", "dtStr": "2026-10-14 07:47:52"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "แดน บุญมี", "dtStr": "2026-10-14 16:32:55"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "พิชญา จันทรกานตานนท์", "dtStr": "2026-10-14 07:30:01"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "พิชญา จันทรกานตานนท์", "dtStr": "2026-10-14 17:18:39"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "นิภารัตน์ วังกาวี", "dtStr": "2026-10-14 08:10:59"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "นิภารัตน์ วังกาวี", "dtStr": "2026-10-14 16:57:02"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ศาตนันท์ วิชญเจริญกุล", "dtStr": "2026-10-14 08:11:36"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ศาตนันท์ วิชญเจริญกุล", "dtStr": "2026-10-14 16:30:08"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "นางสาวปัณฑรีย์ สุขศร", "dtStr": "2026-10-14 08:21:53"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "นางสาวปัณฑรีย์ สุขศร", "dtStr": "2026-10-14 18:07:12"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "สุภารัตน์ เดชาติวงศ์ณอยุ", "dtStr": "2026-10-14 08:20:12"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "สุภารัตน์ เดชาติวงศ์ณอยุ", "dtStr": "2026-10-14 16:34:51"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "วิภาดา ธาราศักดิ์", "dtStr": "2026-10-14 08:23:31"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "วิภาดา ธาราศักดิ์", "dtStr": "2026-10-14 16:45:49"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "อธิชาติ ไตรเดช", "dtStr": "2026-10-14 07:45:57"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "อธิชาติ ไตรเดช", "dtStr": "2026-10-14 16:35:47"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "วิลาวรรณ นิ่มวิลัย", "dtStr": "2026-10-14 08:19:13"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "วิลาวรรณ นิ่มวิลัย", "dtStr": "2026-10-14 16:30:19"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "พรพรรณ พยนต์", "dtStr": "2026-10-14 08:18:06"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "พรพรรณ พยนต์", "dtStr": "2026-10-14 16:38:20"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ณัฐริกา หลวงพิทักษ์ชุมพล", "dtStr": "2026-10-14 08:26:21"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ณัฐริกา หลวงพิทักษ์ชุมพล", "dtStr": "2026-10-14 16:32:45"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ประกาศิต เรืองประดับ", "dtStr": "2026-10-14 08:12:15"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ประกาศิต เรืองประดับ", "dtStr": "2026-10-14 16:43:43"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "อรณิชา ส่งเสริม", "dtStr": "2026-10-14 08:25:40"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "อรณิชา ส่งเสริม", "dtStr": "2026-10-14 16:36:21"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "วรกัญญา เทศสมบูรณ์", "dtStr": "2026-10-14 08:24:58"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "วรกัญญา เทศสมบูรณ์", "dtStr": "2026-10-14 16:34:19"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "จีรวุฒิ แสงมา", "dtStr": "2026-10-14 08:25:15"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "จีรวุฒิ แสงมา", "dtStr": "2026-10-14 16:57:59"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ณัฐณชา หวานสนิท", "dtStr": "2026-10-14 08:24:39"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ณัฐณชา หวานสนิท", "dtStr": "2026-10-14 17:15:25"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ชลธิฌา นิลชา", "dtStr": "2026-10-14 08:24:25"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ชลธิฌา นิลชา", "dtStr": "2026-10-14 17:48:46"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "กนกรัตน์ ขาวสุทธิ", "dtStr": "2026-10-14 08:01:28"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "กนกรัตน์ ขาวสุทธิ", "dtStr": "2026-10-14 08:01:29"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "กนกรัตน์ ขาวสุทธิ", "dtStr": "2026-10-14 16:32:34"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "วรวลัญช์ จันทมา", "dtStr": "2026-10-14 08:19:49"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "วรวลัญช์ จันทมา", "dtStr": "2026-10-14 17:43:18"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ภัควรกฤตย์ โรจน์วิชญ์คุณ", "dtStr": "2026-10-14 08:29:48"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ภัควรกฤตย์ โรจน์วิชญ์คุณ", "dtStr": "2026-10-14 17:18:22"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ศิรประภา  แสงเงิน", "dtStr": "2026-10-14 08:19:08"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ศิรประภา  แสงเงิน", "dtStr": "2026-10-14 17:48:36"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "อมิตยา  ธวาบุญรัศมี", "dtStr": "2026-10-14 08:22:40"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "อมิตยา  ธวาบุญรัศมี", "dtStr": "2026-10-14 16:42:57"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ธิดาพร  นรสิงห์", "dtStr": "2026-10-14 08:16:06"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ธิดาพร  นรสิงห์", "dtStr": "2026-10-14 16:46:16"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "พิเจน  จงจำ", "dtStr": "2026-10-14 08:03:53"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "พิเจน  จงจำ", "dtStr": "2026-10-14 17:08:38"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ฐิติภัสร์  บุตตรี", "dtStr": "2026-10-14 08:21:22"}, {"rawCat": "พนักงานจ้างตามภารกิจ", "rawName": "ฐิติภัสร์  บุตตรี", "dtStr": "2026-10-14 16:32:07"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นิรมล ฮกหลี", "dtStr": "2026-10-14 07:06:38"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นิรมล ฮกหลี", "dtStr": "2026-10-14 16:33:41"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นกเอี้ยง ยืนยง", "dtStr": "2026-10-14 06:54:52"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นกเอี้ยง ยืนยง", "dtStr": "2026-10-14 16:30:15"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "แรม แก้วพิทักษ์", "dtStr": "2026-10-14 07:29:49"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "แรม แก้วพิทักษ์", "dtStr": "2026-10-14 16:30:47"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "อุทิศ เอี่ยมอ่ำ", "dtStr": "2026-10-14 08:09:24"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "อุทิศ เอี่ยมอ่ำ", "dtStr": "2026-10-14 16:34:25"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สมจิตร สุดจิตร์", "dtStr": "2026-10-14 07:36:57"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สมจิตร สุดจิตร์", "dtStr": "2026-10-14 16:30:59"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ธงชัย บุญผึ้ง", "dtStr": "2026-10-14 08:09:17"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "บังเอิน ลาภอุดมทรัพย์", "dtStr": "2026-10-14 07:32:05"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "บังเอิน ลาภอุดมทรัพย์", "dtStr": "2026-10-14 16:34:01"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ชูชาติ อินทรีย์", "dtStr": "2026-10-14 08:05:53"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สุนทร ไชยงาม", "dtStr": "2026-10-14 08:00:38"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สุนทร ไชยงาม", "dtStr": "2026-10-14 16:51:29"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "วิลาวัลย์ สวนทอง", "dtStr": "2026-10-14 08:07:15"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "วิลาวัลย์ สวนทอง", "dtStr": "2026-10-14 16:30:30"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "เจริญวัย สดใส", "dtStr": "2026-10-14 07:22:33"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "เจริญวัย สดใส", "dtStr": "2026-10-14 16:34:10"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "บุณยานุช ชัยชาญ", "dtStr": "2026-10-14 08:08:33"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "บุณยานุช ชัยชาญ", "dtStr": "2026-10-14 16:31:38"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ณัฐหทัย บุดดา", "dtStr": "2026-10-14 08:19:36"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ณัฐหทัย บุดดา", "dtStr": "2026-10-14 16:30:10"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สมจิตต์ ก้อนแก้ว", "dtStr": "2026-10-14 07:52:08"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นาง ทองนอก", "dtStr": "2026-10-14 07:29:56"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นาง ทองนอก", "dtStr": "2026-10-14 16:30:44"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ใบเฟิร์น ชัยวิเชียร", "dtStr": "2026-10-14 08:25:46"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ใบเฟิร์น ชัยวิเชียร", "dtStr": "2026-10-14 16:35:23"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "กมลเดช ลอยเลื้อน", "dtStr": "2026-10-14 07:30:42"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "กมลเดช ลอยเลื้อน", "dtStr": "2026-10-14 16:31:02"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ปัสมา พ้นภัยพาล", "dtStr": "2026-10-14 07:17:12"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ปัสมา พ้นภัยพาล", "dtStr": "2026-10-14 16:40:01"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "กุหลาบ ยืนยง", "dtStr": "2026-10-14 08:12:07"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "กุหลาบ ยืนยง", "dtStr": "2026-10-14 16:31:09"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นางสาวชุติมา มีทรัพย์", "dtStr": "2026-10-14 08:01:51"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นางสาวชุติมา มีทรัพย์", "dtStr": "2026-10-14 16:33:46"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นางสาวณัฎฐธิดา คงคาหลวง", "dtStr": "2026-10-14 08:07:52"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นางสาวณัฎฐธิดา คงคาหลวง", "dtStr": "2026-10-14 16:34:16"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ประยุทธ บุญรอด", "dtStr": "2026-10-14 06:58:14"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ประยุทธ บุญรอด", "dtStr": "2026-10-14 16:30:07"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นายสุกฤษฐ์ เดี่ยวเชื่อ", "dtStr": "2026-10-14 08:07:24"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นายสุกฤษฐ์ เดี่ยวเชื่อ", "dtStr": "2026-10-14 16:30:40"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สุวรรณ บุญมา", "dtStr": "2026-10-14 07:59:54"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สุวรรณ บุญมา", "dtStr": "2026-10-14 16:32:23"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ธนธิป สินสงวน", "dtStr": "2026-10-14 07:30:07"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ธนธิป สินสงวน", "dtStr": "2026-10-14 16:30:57"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "จำเริญ ขันสุวรรณ", "dtStr": "2026-10-14 07:56:20"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "จำเริญ ขันสุวรรณ", "dtStr": "2026-10-14 16:32:03"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ดำรงศักดิ์ ชะบา", "dtStr": "2026-10-14 07:53:45"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ดำรงศักดิ์ ชะบา", "dtStr": "2026-10-14 16:31:36"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ดารากา พฤฒิทรัพย์", "dtStr": "2026-10-14 08:22:00"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ดารากา พฤฒิทรัพย์", "dtStr": "2026-10-14 16:33:11"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "วิไลลักษณ์ ไชยงาม", "dtStr": "2026-10-14 08:02:34"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "วิไลลักษณ์ ไชยงาม", "dtStr": "2026-10-14 16:31:46"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สรรเสริญ จันทร์บาง", "dtStr": "2026-10-14 08:24:43"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สรรเสริญ จันทร์บาง", "dtStr": "2026-10-14 16:30:21"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "จักรกฤษ ศรีระกิจ", "dtStr": "2026-10-14 08:16:42"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "จักรกฤษ ศรีระกิจ", "dtStr": "2026-10-14 18:06:36"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "กฤษณะ อิ่มทิม", "dtStr": "2026-10-14 07:45:28"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "กฤษณะ อิ่มทิม", "dtStr": "2026-10-14 16:32:11"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สุมาลี บุญเทศ", "dtStr": "2026-10-14 07:14:49"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สุมาลี บุญเทศ", "dtStr": "2026-10-14 16:32:16"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ลักษณ์ แก้วพิทักษ์", "dtStr": "2026-10-14 07:19:07"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ลักษณ์ แก้วพิทักษ์", "dtStr": "2026-10-14 16:30:53"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "อ้อย อยู่คง", "dtStr": "2026-10-14 08:04:27"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "อ้อย อยู่คง", "dtStr": "2026-10-14 18:06:32"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ดอน ลีฮุง", "dtStr": "2026-10-14 07:58:55"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ดอน ลีฮุง", "dtStr": "2026-10-14 16:33:52"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ภัทราวดี  ทิศรักษ์", "dtStr": "2026-10-14 08:27:52"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ภัทราวดี  ทิศรักษ์", "dtStr": "2026-10-14 16:30:02"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ครรชิต  ลาภอุดมทรัพย์", "dtStr": "2026-10-14 07:41:34"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ครรชิต  ลาภอุดมทรัพย์", "dtStr": "2026-10-14 16:34:30"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "จิรวัฒน์  วิวัฒนชาติ", "dtStr": "2026-10-14 08:24:14"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "จิรวัฒน์  วิวัฒนชาติ", "dtStr": "2026-10-14 16:32:58"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สันทัสน์  เอี่ยมเอก", "dtStr": "2026-10-14 07:49:47"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สันทัสน์  เอี่ยมเอก", "dtStr": "2026-10-14 16:30:37"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "จิรัฎฐ์  ฮกหลี", "dtStr": "2026-10-14 08:12:45"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "จิรัฎฐ์  ฮกหลี", "dtStr": "2026-10-14 16:30:33"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "วิวาภร  สาครสูงเนิน", "dtStr": "2026-10-14 07:51:00"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "วิวาภร  สาครสูงเนิน", "dtStr": "2026-10-14 16:41:50"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สุรีย์  บุญเทศ", "dtStr": "2026-10-14 08:07:09"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สุรีย์  บุญเทศ", "dtStr": "2026-10-14 16:47:13"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "จิรายุทธ  มุงคุณคำซาว", "dtStr": "2026-10-14 08:18:49"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "วิมลสิริ แย้มกลิ่น", "dtStr": "2026-10-14 08:11:54"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "วิมลสิริ แย้มกลิ่น", "dtStr": "2026-10-14 16:31:54"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ปาณัสม์ ประทุมตรี", "dtStr": "2026-10-14 08:20:55"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ปาณัสม์ ประทุมตรี", "dtStr": "2026-10-14 16:38:35"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สาธิตา ประดับ", "dtStr": "2026-10-14 08:07:46"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สาธิตา ประดับ", "dtStr": "2026-10-14 16:34:46"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สมปรารถนา พ้นภัยพาล", "dtStr": "2026-10-14 07:31:10"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สมปรารถนา พ้นภัยพาล", "dtStr": "2026-10-14 16:39:26"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สุรัตน์ บุญผึ้ง", "dtStr": "2026-10-14 08:02:40"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สุรัตน์ บุญผึ้ง", "dtStr": "2026-10-14 16:31:42"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สีทอง บุญผึ้ง", "dtStr": "2026-10-14 07:52:01"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สีทอง บุญผึ้ง", "dtStr": "2026-10-14 16:31:23"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สรวุฒิ ยืนยง", "dtStr": "2026-10-14 08:07:31"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สรวุฒิ ยืนยง", "dtStr": "2026-10-14 16:34:55"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สายยนต์ สังวาลย์", "dtStr": "2026-10-14 07:51:33"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "สายยนต์ สังวาลย์", "dtStr": "2026-10-14 16:35:11"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "มยุรี เจริญอาจ", "dtStr": "2026-10-14 06:59:34"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "มยุรี เจริญอาจ", "dtStr": "2026-10-14 16:33:37"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "อมรรัตน์ มีสุข", "dtStr": "2026-10-14 08:07:40"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "อมรรัตน์ มีสุข", "dtStr": "2026-10-14 16:33:24"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "อาทิตย์ ใจพุก", "dtStr": "2026-10-14 07:51:53"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "อาทิตย์ ใจพุก", "dtStr": "2026-10-14 16:34:07"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ปรีชา เยี่ยมชัยภูมิ", "dtStr": "2026-10-14 07:44:07"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ปรีชา เยี่ยมชัยภูมิ", "dtStr": "2026-10-14 16:46:38"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ยุพาพร มุงคุณคำซาว", "dtStr": "2026-10-14 08:06:20"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ยุพาพร มุงคุณคำซาว", "dtStr": "2026-10-14 16:34:41"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "รัตนพล บุญมา", "dtStr": "2026-10-14 07:39:34"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "รัตนพล บุญมา", "dtStr": "2026-10-14 16:32:29"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ศราวุฒิ พรมสิงห์", "dtStr": "2026-10-14 07:57:56"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "ศราวุฒิ พรมสิงห์", "dtStr": "2026-10-14 16:31:31"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "เกศรินทร์ หินทอง", "dtStr": "2026-10-14 07:30:47"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "เกศรินทร์ หินทอง", "dtStr": "2026-10-14 16:31:05"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "วรัญญา ไชยลังกา", "dtStr": "2026-10-14 08:04:20"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "วรัญญา ไชยลังกา", "dtStr": "2026-10-14 16:31:58"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "อนุชิต  มุงคุณคำซาว", "dtStr": "2026-10-14 08:18:47"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นายประพันธ์ ฉายยา", "dtStr": "2026-10-14 07:14:42"}, {"rawCat": "พนักงานจ้างทั่วไป", "rawName": "นายประพันธ์ ฉายยา", "dtStr": "2026-10-14 16:32:19"}];
-
-    // App Global State
-    let masterRoster = JSON.parse(JSON.stringify(INITIAL_ROSTER));
-    let rawScans = JSON.parse(JSON.stringify(INITIAL_SCANS));
-    let autoAddedHistory = [];
-
-    // Global Element References
-    const elements = {
-      selDate: document.getElementById('selDate'),
-      quickDateSelect: document.getElementById('QuickDateSelect'),
-      prevDate: document.getElementById('prevDate'),
-      lateTimeInput: document.getElementById('lateTimeInput'),
-      outTimeInput: document.getElementById('outTimeInput'),
-      filterType: document.getElementById('filterType'),
-      filterDept: document.getElementById('filterDept'),
-      filterStatus: document.getElementById('filterStatus'),
-      searchEmp: document.getElementById('searchEmp'),
-      filterRawDup: document.getElementById('filterRawDup'),
-      fileInputAppend: document.getElementById('fileInputAppend'),
-      fileInputReplace: document.getElementById('fileInputReplace'),
-      btnImportAppend: document.getElementById('btnImportAppend'),
-      btnImportReplace: document.getElementById('btnImportReplace'),
-      btnDownloadXlsm: document.getElementById('btnDownloadXlsm'),
-      btnExportXlsx: document.getElementById('btnExportXlsx'),
-      btnDemoNewPerson: document.getElementById('btnDemoNewPerson'),
-      btnDemoDup: document.getElementById('btnDemoDup'),
-      btnResetData: document.getElementById('btnResetData'),
-      toastBanner: document.getElementById('toastBanner'),
-      toastBox: document.getElementById('toastBox'),
-      toastText: document.getElementById('toastText'),
-      btnCloseToast: document.getElementById('btnCloseToast'),
-      dailyTableBody: document.getElementById('dailyTableBody'),
-      catSummaryBody: document.getElementById('catSummaryBody'),
-      deptSummaryBody: document.getElementById('deptSummaryBody'),
-      rawTableBody: document.getElementById('rawTableBody'),
-      rosterTableBody: document.getElementById('rosterTableBody'),
-      aliasTableBody: document.getElementById('aliasTableBody'),
-      kpiTotalEmp: document.getElementById('kpiTotalEmp'),
-      kpiAutoAdded: document.getElementById('kpiAutoAdded'),
-      kpiMorningIn: document.getElementById('kpiMorningIn'),
-      kpiOnTime: document.getElementById('kpiOnTime'),
-      kpiLate: document.getElementById('kpiLate'),
-      kpiEveningOut: document.getElementById('kpiEveningOut'),
-      kpiDupEmp: document.getElementById('kpiDupEmp'),
-      kpiMissing: document.getElementById('kpiMissing'),
-      dailyCountBadge: document.getElementById('dailyCountBadge'),
-      rawCountBadge: document.getElementById('rawCountBadge'),
-      rosterCountBadge: document.getElementById('rosterCountBadge'),
-      tabBtnDaily: document.getElementById('tabBtnDaily'),
-      tabBtnCat: document.getElementById('tabBtnCat'),
-      tabBtnRaw: document.getElementById('tabBtnRaw'),
-      tabBtnRoster: document.getElementById('tabBtnRoster'),
-      tabBtnExamples: document.getElementById('tabBtnExamples'),
-      viewDaily: document.getElementById('viewDaily'),
-      viewCat: document.getElementById('viewCat'),
-      viewRaw: document.getElementById('viewRaw'),
-      viewRoster: document.getElementById('viewRoster'),
-      viewExamples: document.getElementById('viewExamples'),
-      manualFullname: document.getElementById('manualFullname'),
-      manualType: document.getElementById('manualType'),
-      manualDept: document.getElementById('manualDept'),
-      manualPos: document.getElementById('manualPos'),
-      btnManualAddPerson: document.getElementById('btnManualAddPerson'),
-      btnDownloadAllExamplesXlsx: document.getElementById('btnDownloadAllExamplesXlsx')
-    };
-
-    // Initialize App
+    // --------------------------------------------------------
+    // EVENT LISTENERS & INITIALIZATION
+    // --------------------------------------------------------
+    document.getElementById('fileInput').addEventListener('change', handleFileUpload);
     window.addEventListener('DOMContentLoaded', () => {
-      setupTabNavigation();
-      setupEventListeners();
-      renderAliasTable();
-      refreshAll();
+      renderAll();
     });
 
-    // Helper: Toast Notifications
-    function showToast(message, type = 'info') {
-      elements.toastText.textContent = message;
-      elements.toastBanner.classList.remove('hidden');
-      elements.toastBox.className = 'rounded-lg px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm border ';
-      if (type === 'success') {
-        elements.toastBox.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900');
-      } else if (type === 'warn') {
-        elements.toastBox.classList.add('bg-amber-50', 'border-amber-300', 'text-amber-900');
-      } else if (type === 'error') {
-        elements.toastBox.classList.add('bg-rose-50', 'border-rose-300', 'text-rose-900');
-      } else {
-        elements.toastBox.classList.add('bg-blue-50', 'border-blue-300', 'text-blue-900');
+    function showToast(text, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = text;
+      toast.className = `p-3 rounded-xl text-sm font-medium border ${isError ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
+    }
+
+    // --------------------------------------------------------
+    // MAIN RENDER CONTROLLER
+    // --------------------------------------------------------
+    function renderAll() {
+      updateDatePicker();
+      renderDailyTable();
+      renderRosterTable();
+      saveData();
+    }
+
+    function updateDatePicker() {
+      const datePicker = document.getElementById('datePicker');
+      const currentSel = datePicker.value;
+      const dates = Array.from(new Set(scans.map(s => s.date))).sort().reverse();
+      
+      datePicker.innerHTML = '';
+      if (dates.length === 0) {
+        datePicker.innerHTML = '<option value="">-- ยังไม่มีข้อมูลไฟล์สแกน --</option>';
+        return;
       }
-    }
 
-    elements.btnCloseToast.addEventListener('click', () => {
-      elements.toastBanner.classList.add('hidden');
-    });
-
-    // Helper: Normalize String for Name Comparison
-    function cleanName(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/^(นาย|นางสาว|นาง|น\.ส\.|พ\.จ\.อ\.|พ\.จ\.ท\.|จ\.ส\.อ\.|ด\.ต\.|พันจ่าเอก|พันจ่าโท)/g, '')
-        .replace(/\s+/g, '')
-        .trim();
-    }
-
-    // Tab Navigation System
-    function setupTabNavigation() {
-      const tabs = [
-        { btn: elements.tabBtnDaily, view: elements.viewDaily },
-        { btn: elements.tabBtnCat, view: elements.viewCat },
-        { btn: elements.tabBtnRaw, view: elements.viewRaw },
-        { btn: elements.tabBtnRoster, view: elements.viewRoster },
-        { btn: elements.tabBtnExamples, view: elements.viewExamples }
-      ];
-
-      tabs.forEach(tab => {
-        tab.btn.addEventListener('click', () => {
-          tabs.forEach(t => {
-            t.view.classList.add('hidden');
-            if (t.btn === elements.tabBtnExamples) {
-              t.btn.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 border border-amber-500 shadow-sm';
-            } else {
-              t.btn.className = 'px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300';
-            }
-          });
-          tab.view.classList.remove('hidden');
-          if (tab.btn === elements.tabBtnExamples) {
-            tab.btn.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-slate-950 shadow-md border border-amber-600';
-          } else {
-            tab.btn.className = 'px-4 py-2 rounded-lg text-sm font-bold bg-[#1B365D] text-white shadow-sm';
-          }
-        });
-      });
-    }
-
-    // Listeners for Interactive Controls
-    function setupEventListeners() {
-      ['change', 'input'].forEach(evt => {
-        elements.selDate.addEventListener(evt, refreshAll);
-        elements.prevDate.addEventListener(evt, refreshAll);
-        elements.lateTimeInput.addEventListener(evt, refreshAll);
-        elements.outTimeInput.addEventListener(evt, refreshAll);
-        elements.filterType.addEventListener(evt, refreshAll);
-        elements.filterDept.addEventListener(evt, refreshAll);
-        elements.filterStatus.addEventListener(evt, refreshAll);
-        elements.searchEmp.addEventListener(evt, refreshAll);
-        elements.filterRawDup.addEventListener(evt, renderRawTableOnly);
-      });
-
-      elements.quickDateSelect.addEventListener('change', (e) => {
-        if (e.target.value) {
-          elements.selDate.value = e.target.value;
-          refreshAll();
-        }
-      });
-
-      // Manual Add Person
-      elements.btnManualAddPerson.addEventListener('click', handleManualAddPerson);
-
-      // Import File Triggering
-      elements.btnImportAppend.addEventListener('click', () => elements.fileInputAppend.click());
-      elements.btnImportReplace.addEventListener('click', () => elements.fileInputReplace.click());
-
-      elements.fileInputAppend.addEventListener('change', (e) => handleFileUpload(e, false));
-      elements.fileInputReplace.addEventListener('change', (e) => handleFileUpload(e, true));
-
-      // Demo Buttons
-      elements.btnDemoNewPerson.addEventListener('click', runDemoNewPerson);
-      elements.btnDemoDup.addEventListener('click', runDemoDup);
-      elements.btnResetData.addEventListener('click', resetAllData);
-
-      // Download Buttons
-      elements.btnExportXlsx.addEventListener('click', exportProcessedResultsXlsx);
-      elements.btnDownloadXlsm.addEventListener('click', downloadSampleXlsx);
-      elements.btnDownloadAllExamplesXlsx.addEventListener('click', downloadSampleXlsx);
-
-      // Example Cards Action Delegate
-      document.querySelectorAll('.btn-run-example').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const exId = e.currentTarget.getAttribute('data-ex-id');
-          runExamplePreset(exId);
-        });
-      });
-
-      document.querySelectorAll('.btn-dl-example').forEach(btn => {
-        btn.addEventListener('click', () => downloadSampleXlsx());
-      });
-    }
-
-    // Refresh UI & Available Dates
-    function updateDateDropdown() {
-      const dates = new Set();
-      rawScans.forEach(s => {
-        if (s.dtStr && s.dtStr.includes(' ')) {
-          dates.add(s.dtStr.split(' ')[0]);
-        }
-      });
-      const sortedDates = Array.from(dates).sort().reverse();
-      elements.quickDateSelect.innerHTML = '<option value="">-- เลือกวันที่พบข้อมูลสแกน --</option>';
-      sortedDates.forEach(d => {
+      dates.forEach(d => {
         const opt = document.createElement('option');
         opt.value = d;
-        opt.textContent = `📅 ${d} (${rawScans.filter(s => s.dtStr.startsWith(d)).length} สแกน)`;
-        if (d === elements.selDate.value) opt.selected = true;
-        elements.quickDateSelect.appendChild(opt);
+        opt.textContent = `📅 วันที่ ${d} (${scans.filter(s => s.date === d).length} รายการ)`;
+        datePicker.appendChild(opt);
       });
+
+      if (currentSel && dates.includes(currentSel)) {
+        datePicker.value = currentSel;
+      }
     }
 
-    // Main Compute and Render Orchestration
-    function refreshAll() {
-      updateDateDropdown();
-      const processed = processScanData();
-      renderKPIs(processed);
-      renderDailyTable(processed);
-      renderCatSummary(processed);
-      renderDeptSummary(processed);
-      renderRawTableOnly();
-      renderRosterTable();
-    }
+    // --------------------------------------------------------
+    // TAB 1: DAILY SCAN SUMMARY
+    // --------------------------------------------------------
+    function renderDailyTable() {
+      const selectedDate = document.getElementById('datePicker').value;
+      const lateTime = document.getElementById('lateTime').value || "08:30";
+      const search = document.getElementById('searchInput').value.trim().toLowerCase();
+      const tbody = document.getElementById('dailyTbody');
 
-    // Core Business Logic: Scan Processing & Person Auto-Addition
-    function processScanData() {
-      const targetDate = elements.selDate.value;
-      const previousDate = elements.prevDate.value;
-      const lateTimeThreshold = elements.lateTimeInput.value || "08:30";
-      const outTimeThreshold = elements.outTimeInput.value || "16:30";
+      document.getElementById('countDaily').textContent = roster.length;
 
-      // Match & Map Scans
-      const empMap = {};
-      masterRoster.forEach(emp => {
-        empMap[emp.id] = {
-          ...emp,
-          morningScans: [],
-          eveningScans: [],
-          prevEveningScans: [],
-          rawLogCount: 0
-        };
-      });
-
-      rawScans.forEach(scan => {
-        if (!scan.dtStr || !scan.dtStr.includes(' ')) return;
-        const [sDate, sTime] = scan.dtStr.split(' ');
-
-        // Auto-add check against master roster
-        const masterEmp = findMatchingMasterPerson(scan.rawName);
-        if (masterEmp && empMap[masterEmp.id]) {
-          const target = empMap[masterEmp.id];
-          target.rawLogCount++;
-
-          if (sDate === targetDate) {
-            if (sTime < "12:00") {
-              target.morningScans.push(sTime);
-            } else {
-              target.eveningScans.push(sTime);
-            }
-          } else if (sDate === previousDate) {
-            if (sTime >= "12:00") {
-              target.prevEveningScans.push(sTime);
-            }
-          }
-        }
-      });
-
-      // Compute status for each employee
-      const list = Object.values(empMap).map(emp => {
-        emp.morningScans.sort();
-        emp.eveningScans.sort();
-        emp.prevEveningScans.sort();
-
-        const firstIn = emp.morningScans[0] || '';
-        const lastOut = emp.eveningScans[emp.eveningScans.length - 1] || '';
-        const prevOut = emp.prevEveningScans[emp.prevEveningScans.length - 1] || '';
-
-        const morningCount = emp.morningScans.length;
-        const eveningCount = emp.eveningScans.length;
-
-        const isDupMorning = morningCount > 1;
-        const isDupEvening = eveningCount > 1;
-        const isDuplicate = isDupMorning || isDupEvening;
-
-        let statusIn = '-';
-        if (firstIn) {
-          statusIn = firstIn <= lateTimeThreshold ? 'ปกติ' : 'มาสาย';
-        }
-
-        let statusOut = '-';
-        if (lastOut) {
-          statusOut = lastOut >= outTimeThreshold ? 'ปกติ' : 'ออกก่อนเวลา';
-        }
-
-        let overallSummary = 'ไม่พบข้อมูลสแกน';
-        if (firstIn && lastOut) {
-          overallSummary = (statusIn === 'มาสาย' || statusOut === 'ออกก่อนเวลา') ? 'มาสาย / ออกก่อน' : 'ปกติครบถ้วน';
-        } else if (firstIn) {
-          overallSummary = statusIn === 'มาสาย' ? 'มาสาย (ไม่สแกนออก)' : 'เข้าปกติ (ไม่สแกนออก)';
-        } else if (lastOut) {
-          overallSummary = 'สแกนออกเย็นอย่างเดียว';
-        }
-
-        return {
-          ...emp,
-          firstIn,
-          lastOut,
-          prevOut,
-          morningCount,
-          eveningCount,
-          isDupMorning,
-          isDupEvening,
-          isDuplicate,
-          statusIn,
-          statusOut,
-          overallSummary
-        };
-      });
-
-      return list;
-    }
-
-    // Name Matching with Alias Map
-    function findMatchingMasterPerson(rawName) {
-      const cleanedRaw = cleanName(rawName);
-      if (!cleanedRaw) return null;
-
-      // 1. Exact match
-      let match = masterRoster.find(r => cleanName(r.fullname) === cleanedRaw || cleanName(r.fname + r.lname) === cleanedRaw);
-      if (match) return match;
-
-      // 2. Check Alias Mapping
-      const aliasMasterKey = ALIAS_MAP[cleanedRaw];
-      if (aliasMasterKey) {
-        match = masterRoster.find(r => cleanName(r.fullname) === aliasMasterKey || cleanName(r.fname + r.lname) === aliasMasterKey);
-        if (match) return match;
+      if (!selectedDate) {
+        tbody.innerHTML = '<tr><td colspan="9" class="p-8 text-center text-slate-400">ยังไม่มีข้อมูล กรุณากดนำเข้าไฟล์สแกนนิ้ว (.xlsx / .csv)</td></tr>';
+        return;
       }
 
-      // 3. Partial Name Containment Match
-      match = masterRoster.find(r => {
-        const cMaster = cleanName(r.fullname);
-        return cMaster.includes(cleanedRaw) || cleanedRaw.includes(cMaster);
-      });
-
-      return match || null;
-    }
-
-    // Auto Add Person Handler
-    function autoAddPersonFromScan(rawName, rawCat = "พนักงานจ้างทั่วไป") {
-      const trimmedName = rawName.trim();
-      const existing = findMatchingMasterPerson(trimmedName);
-      if (existing) return existing;
-
-      // Infer clean name parts
-      let cleaned = trimmedName.replace(/^(นาย|นางสาว|นาง|น\.s\.|พ\.จ\.อ\.|พ\.จ\.ท\.|จ\.ส\.อ\.|ด\.ต\.|พันจ่าเอก|พันจ่าโท)\s*/, '');
-      const parts = cleaned.split(/\s+/);
-      const fname = parts[0] || cleaned;
-      const lname = parts.slice(1).join(' ') || '';
-
-      let inferredType = "พนักงานจ้างทั่วไป";
-      if (rawCat.includes("เทศบาล") || rawCat.includes("ข้าราชการ")) inferredType = "พนักงานเทศบาล";
-      else if (rawCat.includes("ภารกิจ")) inferredType = "พนักงานจ้างตามภารกิจ";
-      else if (rawCat.includes("ประจำ")) inferredType = "ลูกจ้างประจำ";
-
-      const newId = masterRoster.length > 0 ? Math.max(...masterRoster.map(r => r.id)) + 1 : 1;
-      const newPerson = {
-        id: newId,
-        type: inferredType,
-        dept: "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)",
-        fname: fname,
-        lname: lname,
-        pos: "พนักงาน (เพิ่มให้อัตโนมัติ)",
-        fullname: trimmedName,
-        autoAdded: true
-      };
-
-      masterRoster.push(newPerson);
-      autoAddedHistory.push(newPerson);
-
-      // ซิงค์ลง Supabase (ถ้ามี)
-      syncRosterToSupabase(newPerson);
-
-      return newPerson;
-    }
-
-    // KPI Card Rendering
-    function renderKPIs(list) {
-      const totalEmp = list.length;
-      const autoAddedCount = list.filter(e => e.autoAdded).length;
-      const morningIn = list.filter(e => e.firstIn).length;
-      const onTime = list.filter(e => e.firstIn && e.statusIn === 'ปกติ').length;
-      const late = list.filter(e => e.statusIn === 'มาสาย').length;
-      const eveningOut = list.filter(e => e.lastOut).length;
-      const dupEmp = list.filter(e => e.isDuplicate).length;
-      const missing = list.filter(e => !e.firstIn && !e.lastOut).length;
-
-      elements.kpiTotalEmp.textContent = totalEmp;
-      elements.kpiAutoAdded.textContent = autoAddedCount;
-      elements.kpiMorningIn.textContent = morningIn;
-      elements.kpiOnTime.textContent = onTime;
-      elements.kpiLate.textContent = late;
-      elements.kpiEveningOut.textContent = eveningOut;
-      elements.kpiDupEmp.textContent = dupEmp;
-      elements.kpiMissing.textContent = missing;
-
-      elements.dailyCountBadge.textContent = totalEmp;
-      elements.rawCountBadge.textContent = rawScans.length;
-      elements.rosterCountBadge.textContent = totalEmp;
-    }
-
-    // Render TAB 1 Daily Table
-    function renderDailyTable(list) {
-      const fType = elements.filterType.value;
-      const fDept = elements.filterDept.value;
-      const fStatus = elements.filterStatus.value;
-      const search = elements.searchEmp.value.trim().toLowerCase();
-
-      let filtered = list.filter(emp => {
-        if (fType !== 'ALL' && emp.type !== fType) return false;
-        if (fDept !== 'ALL' && emp.dept !== fDept) return false;
-
-        if (fStatus === 'AUTO_ADDED' && !emp.autoAdded) return false;
-        if (fStatus === 'SCANNED' && !emp.firstIn && !emp.lastOut) return false;
-        if (fStatus === 'DUP' && !emp.isDuplicate) return false;
-        if (fStatus === 'LATE' && emp.statusIn !== 'มาสาย') return false;
-        if (fStatus === 'MISSING' && (emp.firstIn || emp.lastOut)) return false;
-
-        if (search) {
-          const matchName = emp.fullname.toLowerCase().includes(search);
-          const matchPos = emp.pos.toLowerCase().includes(search);
-          const matchDept = emp.dept.toLowerCase().includes(search);
-          if (!matchName && !matchPos && !matchDept) return false;
-        }
-
-        return true;
-      });
+      // Filter scans for selected date
+      const dayScans = scans.filter(s => s.date === selectedDate);
 
       let html = '';
-      filtered.forEach((emp, index) => {
-        const inClass = emp.statusIn === 'มาสาย' ? 'bg-amber-100 text-amber-900 font-bold' : (emp.statusIn === 'ปกติ' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-400');
-        const outClass = emp.statusOut === 'ออกก่อนเวลา' ? 'bg-amber-100 text-amber-900 font-bold' : (emp.statusOut === 'ปกติ' ? 'bg-blue-50 text-blue-800' : 'text-slate-400');
-
-        let dupBadge = '<span class="text-slate-400">-</span>';
-        if (emp.isDuplicate) {
-          dupBadge = `<span class="bg-orange-500 text-white font-bold px-2 py-0.5 rounded text-[11px] animate-pulse">⚠️ สแกนซ้ำ (เช้า ${emp.morningCount} / เย็น ${emp.eveningCount})</span>`;
+      roster.forEach((emp, index) => {
+        if (search && !emp.fullname.toLowerCase().includes(search) && !emp.pos.toLowerCase().includes(search)) {
+          return;
         }
 
-        let nameDisplay = emp.fullname;
-        if (emp.autoAdded) {
-          nameDisplay += ' <span class="bg-purple-200 text-purple-900 text-[10px] font-bold px-1.5 py-0.5 rounded">✨ เพิ่มอัตโนมัติ</span>';
-        }
+        // Find employee scans
+        const empScans = dayScans.filter(s => cleanName(s.name) === cleanName(emp.fullname));
+        const times = empScans.map(s => s.time).sort();
 
-        html += `
-          <tr class="hover:bg-slate-50 transition ${emp.autoAdded ? 'bg-purple-50/40' : ''}">
-            <td class="p-2 text-center text-slate-500 font-mono">${index + 1}</td>
-            <td class="p-2 font-medium">${emp.type}</td>
-            <td class="p-2 text-slate-700">${emp.dept}</td>
-            <td class="p-2 font-semibold text-slate-900">${nameDisplay}</td>
-            <td class="p-2 text-slate-600">${emp.pos}</td>
-            <td class="p-2 text-center font-mono font-bold ${emp.firstIn ? 'text-blue-900' : 'text-slate-300'}">${emp.firstIn || '-'}</td>
-            <td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-[11px] ${inClass}">${emp.statusIn}</span></td>
-            <td class="p-2 text-center font-mono font-bold ${emp.lastOut ? 'text-indigo-900' : 'text-slate-300'}">${emp.lastOut || '-'}</td>
-            <td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-[11px] ${outClass}">${emp.statusOut}</span></td>
-            <td class="p-2 text-center font-mono">${emp.morningCount} / ${emp.eveningCount}</td>
-            <td class="p-2 text-center">${dupBadge}</td>
-            <td class="p-2 text-center font-semibold text-slate-800">${emp.overallSummary}</td>
-            <td class="p-2 text-center font-mono text-slate-600 bg-slate-50">${emp.prevOut || '-'}</td>
-          </tr>
-        `;
-      });
+        const morning = times.find(t => t < "12:00") || '';
+        const evening = times.filter(t => t >= "12:00").pop() || '';
 
-      if (filtered.length === 0) {
-        html = `<tr><td colspan="13" class="p-8 text-center text-slate-500">ไม่พบข้อมูลตามเงื่อนไขการค้นหา/ตัวกรองที่เลือก</td></tr>`;
-      }
+        let inStatus = '-';
+        if (morning) inStatus = morning <= lateTime ? 'ปกติ' : 'มาสาย';
 
-      elements.dailyTableBody.innerHTML = html;
-    }
+        let outStatus = '-';
+        if (evening) outStatus = evening >= '16:30' ? 'ปกติ' : 'ออกก่อนเวลา';
 
-    // Render TAB 2 Category & Department Breakdown
-    function renderCatSummary(list) {
-      const types = ["พนักงานเทศบาล", "ลูกจ้างประจำ", "พนักงานจ้างตามภารกิจ", "พนักงานจ้างทั่วไป"];
-      let html = '';
-      types.forEach(t => {
-        const group = list.filter(e => e.type === t);
-        const total = group.length;
-        const morningIn = group.filter(e => e.firstIn).length;
-        const onTime = group.filter(e => e.statusIn === 'ปกติ').length;
-        const late = group.filter(e => e.statusIn === 'มาสาย').length;
-        const eveningOut = group.filter(e => e.lastOut).length;
-        const dup = group.filter(e => e.isDuplicate).length;
-        const missing = group.filter(e => !e.firstIn && !e.lastOut).length;
+        let summary = 'ขาดสแกน';
+        if (morning && evening) summary = inStatus === 'มาสาย' ? 'มาสาย' : 'ปกติ';
+        else if (morning) summary = inStatus === 'มาสาย' ? 'มาสาย (ไม่สแกนออก)' : 'สแกนเข้าอย่างเดียว';
+        else if (evening) summary = 'สแกนออกอย่างเดียว';
+
+        const inClass = inStatus === 'มาสาย' ? 'bg-amber-100 text-amber-900 font-bold' : (inStatus === 'ปกติ' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-400');
+        const outClass = outStatus === 'ออกก่อนเวลา' ? 'bg-amber-100 text-amber-900 font-bold' : (outStatus === 'ปกติ' ? 'bg-blue-100 text-blue-800' : 'text-slate-400');
 
         html += `
           <tr class="hover:bg-slate-50">
-            <td class="p-2 font-bold text-slate-800">${t}</td>
-            <td class="p-2 text-right font-bold text-[#1B365D]">${total}</td>
-            <td class="p-2 text-right text-blue-700">${morningIn}</td>
-            <td class="p-2 text-right text-emerald-700 font-semibold">${onTime}</td>
-            <td class="p-2 text-right text-amber-700 font-semibold">${late}</td>
-            <td class="p-2 text-right text-indigo-700">${eveningOut}</td>
-            <td class="p-2 text-right font-bold ${dup > 0 ? 'text-orange-600 bg-orange-50' : 'text-slate-400'}">${dup}</td>
-            <td class="p-2 text-right text-rose-600 font-semibold">${missing}</td>
-          </tr>
-        `;
-      });
-      elements.catSummaryBody.innerHTML = html;
-    }
-
-    function renderDeptSummary(list) {
-      const depts = [
-        "ผู้บริหารท้องถิ่น",
-        "สำนักปลัดเทศบาล",
-        "กองคลัง",
-        "กองช่าง",
-        "กองสาธารณสุขและสิ่งแวดล้อม",
-        "กองการศึกษา",
-        "กองสวัสดิการสังคม",
-        "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)"
-      ];
-
-      let html = '';
-      depts.forEach(d => {
-        const group = list.filter(e => e.dept === d);
-        const total = group.length;
-        if (total === 0 && d === "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)") return;
-
-        const morningIn = group.filter(e => e.firstIn).length;
-        const onTime = group.filter(e => e.statusIn === 'ปกติ').length;
-        const late = group.filter(e => e.statusIn === 'มาสาย').length;
-        const eveningOut = group.filter(e => e.lastOut).length;
-        const dup = group.filter(e => e.isDuplicate).length;
-        const missing = group.filter(e => !e.firstIn && !e.lastOut).length;
-
-        html += `
-          <tr class="hover:bg-slate-50 ${d.includes('เพิ่มอัตโนมัติ') ? 'bg-purple-50/50' : ''}">
-            <td class="p-2 font-bold text-slate-800">${d}</td>
-            <td class="p-2 text-right font-bold text-[#1B365D]">${total}</td>
-            <td class="p-2 text-right text-blue-700">${morningIn}</td>
-            <td class="p-2 text-right text-emerald-700 font-semibold">${onTime}</td>
-            <td class="p-2 text-right text-amber-700 font-semibold">${late}</td>
-            <td class="p-2 text-right text-indigo-700">${eveningOut}</td>
-            <td class="p-2 text-right font-bold ${dup > 0 ? 'text-orange-600 bg-orange-50' : 'text-slate-400'}">${dup}</td>
-            <td class="p-2 text-right text-rose-600 font-semibold">${missing}</td>
-          </tr>
-        `;
-      });
-      elements.deptSummaryBody.innerHTML = html;
-    }
-
-    // Render TAB 3 Raw Scans & Duplicates
-    function renderRawTableOnly() {
-      const fDup = elements.filterRawDup.value;
-      const targetDate = elements.selDate.value;
-
-      // Group scans by person & date shift to tag duplicates
-      const counts = {};
-      rawScans.forEach(s => {
-        if (!s.dtStr) return;
-        const [d, t] = s.dtStr.split(' ');
-        const shift = t < "12:00" ? 'AM' : 'PM';
-        const key = `${cleanName(s.rawName)}_${d}_${shift}`;
-        counts[key] = (counts[key] || 0) + 1;
-      });
-
-      let html = '';
-      let rowIdx = 1;
-
-      rawScans.forEach(s => {
-        if (!s.dtStr) return;
-        const [d, t] = s.dtStr.split(' ');
-        const shift = t < "12:00" ? 'เช้า' : 'เย็น';
-        const shiftKey = t < "12:00" ? 'AM' : 'PM';
-
-        const personMatch = findMatchingMasterPerson(s.rawName);
-        const isAutoAdded = personMatch ? personMatch.autoAdded : false;
-
-        const key = `${cleanName(s.rawName)}_${d}_${shiftKey}`;
-        const totalInShift = counts[key] || 1;
-        const isDup = totalInShift > 1;
-
-        if (fDup === 'DUP' && !isDup) return;
-        if (fDup === 'AUTO_ADDED' && !isAutoAdded) return;
-
-        let dupResultText = '<span class="text-emerald-700 font-medium">ปกติ (1 ครั้ง)</span>';
-        if (isDup) {
-          dupResultText = `<span class="bg-orange-600 text-white font-bold px-2 py-0.5 rounded text-[11px] animate-pulse">⚠️ สแกนซ้ำ (${shift} ${totalInShift} ครั้ง)</span>`;
-        }
-
-        html += `
-          <tr class="hover:bg-slate-50 ${isDup ? 'bg-orange-50/60' : ''}">
-            <td class="p-2 text-center text-slate-500 font-mono">${rowIdx++}</td>
-            <td class="p-2 text-slate-600">${s.rawCat || 'ไม่ระบุ'}</td>
-            <td class="p-2 font-semibold text-slate-900">
-              ${s.rawName}
-              ${isAutoAdded ? '<span class="bg-purple-200 text-purple-900 text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">✨ เพิ่มอัตโนมัติ</span>' : ''}
-            </td>
-            <td class="p-2 font-mono text-slate-800">${s.dtStr}</td>
-            <td class="p-2 font-mono ${d === targetDate ? 'font-bold text-[#1B365D]' : 'text-slate-500'}">${d}</td>
-            <td class="p-2 font-mono font-bold text-slate-700">${t}</td>
-            <td class="p-2 font-medium">${shift}</td>
-            <td class="p-2 text-slate-700">${personMatch ? personMatch.type : 'พนักงานจ้างทั่วไป'}</td>
-            <td class="p-2 text-slate-700">${personMatch ? personMatch.dept : 'ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)'}</td>
-            <td class="p-2 text-center font-mono font-bold">${totalInShift}</td>
-            <td class="p-2 text-center">${dupResultText}</td>
+            <td class="p-3 text-center text-slate-400 font-mono">${index + 1}</td>
+            <td class="p-3 text-slate-600">${emp.dept}</td>
+            <td class="p-3 font-semibold text-slate-900">${emp.fullname}</td>
+            <td class="p-3 text-slate-600">${emp.pos}</td>
+            <td class="p-3 text-center font-mono font-bold text-slate-800">${morning || '-'}</td>
+            <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] ${inClass}">${inStatus}</span></td>
+            <td class="p-3 text-center font-mono font-bold text-slate-800">${evening || '-'}</td>
+            <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] ${outClass}">${outStatus}</span></td>
+            <td class="p-3 text-center font-semibold text-slate-700">${summary}</td>
           </tr>
         `;
       });
 
-      if (!html) {
-        html = `<tr><td colspan="11" class="p-6 text-center text-slate-400">ไม่พบรายการสแกนดิบตามเงื่อนไขที่เลือก</td></tr>`;
-      }
-
-      elements.rawTableBody.innerHTML = html;
+      tbody.innerHTML = html || '<tr><td colspan="9" class="p-6 text-center text-slate-400">ไม่พบข้อมูลที่ค้นหา</td></tr>';
     }
 
-    // Render TAB 4 Roster & Editable Table
+    // --------------------------------------------------------
+    // TAB 2: ROSTER & DELETE PERSON
+    // --------------------------------------------------------
     function renderRosterTable() {
-      let html = '';
-      masterRoster.forEach((r, idx) => {
-        html += `
-          <tr class="hover:bg-slate-50 ${r.autoAdded ? 'bg-purple-50/60' : ''}">
-            <td class="p-2 text-center text-slate-500 font-mono">${idx + 1}</td>
-            <td class="p-2">
-              <select onchange="updateRosterField(${r.id}, 'type', this.value)" class="bg-white border border-slate-300 rounded px-1.5 py-1 text-xs font-semibold text-slate-800">
-                <option value="พนักงานเทศบาล" ${r.type === 'พนักงานเทศบาล' ? 'selected' : ''}>พนักงานเทศบาล</option>
-                <option value="ลูกจ้างประจำ" ${r.type === 'ลูกจ้างประจำ' ? 'selected' : ''}>ลูกจ้างประจำ</option>
-                <option value="พนักงานจ้างตามภารกิจ" ${r.type === 'พนักงานจ้างตามภารกิจ' ? 'selected' : ''}>พนักงานจ้างตามภารกิจ</option>
-                <option value="พนักงานจ้างทั่วไป" ${r.type === 'พนักงานจ้างทั่วไป' ? 'selected' : ''}>พนักงานจ้างทั่วไป</option>
-              </select>
-            </td>
-            <td class="p-2">
-              <select onchange="updateRosterField(${r.id}, 'dept', this.value)" class="bg-white border border-slate-300 rounded px-1.5 py-1 text-xs text-slate-800">
-                <option value="ผู้บริหารท้องถิ่น" ${r.dept === 'ผู้บริหารท้องถิ่น' ? 'selected' : ''}>ผู้บริหารท้องถิ่น</option>
-                <option value="สำนักปลัดเทศบาล" ${r.dept === 'สำนักปลัดเทศบาล' ? 'selected' : ''}>สำนักปลัดเทศบาล</option>
-                <option value="กองคลัง" ${r.dept === 'กองคลัง' ? 'selected' : ''}>กองคลัง</option>
-                <option value="กองช่าง" ${r.dept === 'กองช่าง' ? 'selected' : ''}>กองช่าง</option>
-                <option value="กองสาธารณสุขและสิ่งแวดล้อม" ${r.dept === 'กองสาธารณสุขและสิ่งแวดล้อม' ? 'selected' : ''}>กองสาธารณสุขและสิ่งแวดล้อม</option>
-                <option value="กองการศึกษา" ${r.dept === 'กองการศึกษา' ? 'selected' : ''}>กองการศึกษา</option>
-                <option value="กองสวัสดิการสังคม" ${r.dept === 'กองสวัสดิการสังคม' ? 'selected' : ''}>กองสวัสดิการสังคม</option>
-                <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)" ${r.dept === 'ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)' ? 'selected' : ''}>ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)</option>
-              </select>
-            </td>
-            <td class="p-2 font-semibold text-slate-900">${r.fullname}</td>
-            <td class="p-2">
-              <input type="text" value="${r.pos}" onchange="updateRosterField(${r.id}, 'pos', this.value)" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs w-full" />
-            </td>
-            <td class="p-2 text-center">
-              ${r.autoAdded ? '<span class="bg-purple-200 text-purple-900 font-bold px-2 py-0.5 rounded text-[11px]">✨ เพิ่มอัตโนมัติ</span>' : '<span class="text-slate-400 text-[11px]">ทะเบียนหลัก</span>'}
-            </td>
-          </tr>
-        `;
-      });
-      elements.rosterTableBody.innerHTML = html;
-    }
+      const tbody = document.getElementById('rosterTbody');
+      document.getElementById('countRoster').textContent = roster.length;
 
-    window.updateRosterField = function(id, field, value) {
-      const emp = masterRoster.find(r => r.id === id);
-      if (emp) {
-        emp[field] = value;
-        refreshAll();
-        showToast(`แก้ไขข้อมูลของ "${emp.fullname}" เรียบร้อยแล้ว`, 'success');
-      }
-    };
-
-    function renderAliasTable() {
       let html = '';
-      ALIAS_LIST.forEach(item => {
+      roster.forEach((emp, index) => {
         html += `
           <tr class="hover:bg-slate-50">
-            <td class="p-2 font-mono text-slate-700">${item.rawName}</td>
-            <td class="p-2 font-semibold text-blue-900">${item.masterName}</td>
+            <td class="p-3 text-center text-slate-400 font-mono">${index + 1}</td>
+            <td class="p-3 font-semibold text-slate-900">${emp.fullname}</td>
+            <td class="p-3 text-slate-600">${emp.dept}</td>
+            <td class="p-3 text-slate-600">${emp.pos}</td>
+            <td class="p-3 text-center">
+              <button onclick="deletePerson(${emp.id})" class="bg-rose-100 hover:bg-rose-600 hover:text-white text-rose-700 font-semibold px-2.5 py-1 rounded-lg text-xs transition">
+                🗑️ ลบออก
+              </button>
+            </td>
           </tr>
         `;
       });
-      elements.aliasTableBody.innerHTML = html;
+      tbody.innerHTML = html || '<tr><td colspan="5" class="p-6 text-center text-slate-400">ไม่มีรายชื่อในระบบ</td></tr>';
     }
 
-    // Manual Add Person Action
-    function handleManualAddPerson() {
-      const name = elements.manualFullname.value.trim();
-      const type = elements.manualType.value;
-      const dept = elements.manualDept.value;
-      const pos = elements.manualPos.value.trim() || "พนักงาน";
+    function addPerson() {
+      const name = document.getElementById('addName').value.trim();
+      const dept = document.getElementById('addDept').value.trim() || 'ไม่ระบุสังกัด';
+      const pos = document.getElementById('addPos').value.trim() || 'พนักงาน';
 
       if (!name) {
-        showToast("กรุณากรอกชื่อ-นามสกุล บุคลากร", "warn");
+        showToast('กรุณากรอกชื่อ-นามสกุล', true);
         return;
       }
-
-      const existing = findMatchingMasterPerson(name);
-      if (existing) {
-        showToast(`รายชื่อ "${name}" มีอยู่ในทะเบียนอยู่แล้ว`, "warn");
-        return;
-      }
-
-      const newId = masterRoster.length > 0 ? Math.max(...masterRoster.map(r => r.id)) + 1 : 1;
-      const cleaned = name.replace(/^(นาย|นางสาว|นาง|น\.ส\.)\s*/, '');
-      const parts = cleaned.split(/\s+/);
-      const fname = parts[0] || name;
-      const lname = parts.slice(1).join(' ') || '';
 
       const newPerson = {
-        id: newId,
-        type,
-        dept,
-        fname,
-        lname,
-        pos,
+        id: Date.now(),
         fullname: name,
-        autoAdded: false
+        dept: dept,
+        pos: pos
       };
 
-      masterRoster.push(newPerson);
-      syncRosterToSupabase(newPerson); // ซิงค์กับ Supabase
-
-      elements.manualFullname.value = '';
-      elements.manualPos.value = '';
-      refreshAll();
-      showToast(`เพิ่มคุณ "${name}" เข้าทะเบียนเรียบร้อยแล้ว`, "success");
+      roster.push(newPerson);
+      document.getElementById('addName').value = '';
+      showToast(`เพิ่มคุณ "${name}" เข้าทะเบียนเรียบร้อย`);
+      renderAll();
     }
 
-    // Process Imported File (Append vs Replace)
-    function handleFileUpload(event, isReplaceMode) {
-      const file = event.target.files[0];
+    // Delete Person Function
+    function deletePerson(id) {
+      const target = roster.find(r => r.id === id);
+      if (!target) return;
+
+      if (confirm(`คุณต้องการลบคุณ "${target.fullname}" ออกจากทะเบียนใช่หรือไม่?`)) {
+        roster = roster.filter(r => r.id !== id);
+        showToast(`ลบคุณ "${target.fullname}" เรียบร้อยแล้ว`);
+        renderAll();
+      }
+    }
+
+    // --------------------------------------------------------
+    // FILE IMPORT & DATA PERSISTENCE
+    // --------------------------------------------------------
+    function handleFileUpload(e) {
+      const file = e.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = function(evt) {
         try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[firstSheetName];
-          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+          const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
 
-          if (rows.length < 2) {
-            showToast("ไม่พบข้อมูลสแกนในไฟล์ Excel ที่เลือก", "error");
-            return;
-          }
+          let addedCount = 0;
+          let newPersonAdded = 0;
 
-          const newScans = [];
-          const addedNamesInThisFile = [];
-
-          // Parse rows automatically detecting 2, 3, or 4+ columns
           for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
-            if (!row || row.length === 0) continue;
+            if (!row || row.length < 2) continue;
 
-            let cat = "พนักงานจ้างทั่วไป";
-            let name = "";
-            let dateTimeStr = "";
+            let name = String(row[1] || row[0]).trim();
+            let dtStr = String(row[2] || row[1]).trim();
 
-            if (row.length >= 4 && String(row[2]).includes('-') && String(row[3]).includes(':')) {
-              // Type 5: Col C Date, Col D Time
-              cat = String(row[0] || '').trim();
-              name = String(row[1] || '').trim();
-              dateTimeStr = `${String(row[2]).trim()} ${String(row[3]).trim()}`;
-            } else if (row.length >= 4 && row[1] && row[2]) {
-              // Type 4: Col A Type, Col B Fname, Col C Lname, Col D DateTime
-              cat = String(row[0] || '').trim();
-              name = `${String(row[1]).trim()} ${String(row[2]).trim()}`;
-              dateTimeStr = String(row[3] || '').trim();
-            } else if (row.length === 3) {
-              // Type 1 & 2: Col A Type, Col B Name, Col C DateTime
-              cat = String(row[0] || '').trim();
-              name = String(row[1] || '').trim();
-              dateTimeStr = String(row[2] || '').trim();
-            } else if (row.length === 2) {
-              // Type 3: Col A Name, Col B DateTime
-              name = String(row[0] || '').trim();
-              dateTimeStr = String(row[1] || '').trim();
+            if (!name || !dtStr) continue;
+
+            // Fix Buddhist year & format
+            dtStr = dtStr.replace('/2569', '/2026').replace('-2569', '-2026');
+            let [d, t] = dtStr.split(' ');
+            if (d && d.includes('/')) {
+              const parts = d.split('/');
+              if (parts.length === 3) d = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
             }
 
-            if (!name || !dateTimeStr) continue;
+            if (!d || !t) continue;
 
-            // Convert Buddhist Year BE 2569 -> CE 2026
-            dateTimeStr = dateTimeStr.replace('/2569', '/2026').replace('-2569', '-2026');
-
-            // Format Thai Date DD/MM/YYYY HH:MM:SS -> YYYY-MM-DD HH:MM:SS
-            if (dateTimeStr.includes('/')) {
-              const [dPart, tPart] = dateTimeStr.split(' ');
-              const dParts = dPart.split('/');
-              if (dParts.length === 3) {
-                const formattedDate = `${dParts[2]}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}`;
-                dateTimeStr = `${formattedDate} ${tPart || '08:00:00'}`;
-              }
+            // Auto add new person to roster if missing
+            if (!roster.some(r => cleanName(r.fullname) === cleanName(name))) {
+              roster.push({
+                id: Date.now() + Math.random(),
+                fullname: name,
+                dept: 'เพิ่มให้อัตโนมัติ',
+                pos: 'พนักงาน'
+              });
+              newPersonAdded++;
             }
 
-            // Auto-Add person if missing from Master Roster
-            const masterPerson = findMatchingMasterPerson(name);
-            if (!masterPerson) {
-              const added = autoAddPersonFromScan(name, cat);
-              if (!addedNamesInThisFile.includes(added.fullname)) {
-                addedNamesInThisFile.push(added.fullname);
-              }
-            }
-
-            newScans.push({
-              rawCat: cat,
-              rawName: name,
-              dtStr: dateTimeStr
-            });
+            // Append scan record
+            scans.push({ date: d, time: t.substring(0,5), name: name });
+            addedCount++;
           }
 
-          if (isReplaceMode) {
-            rawScans = newScans;
-          } else {
-            rawScans = rawScans.concat(newScans);
-          }
-
-          // Sync scans with Supabase
-          syncScansToSupabase(newScans);
-
-          // Update main inspect date to the first scan's date
-          if (newScans.length > 0) {
-            const firstDate = newScans[0].dtStr.split(' ')[0];
-            elements.selDate.value = firstDate;
-          }
-
-          refreshAll();
-
-          let msg = `นำเข้าข้อมูลไฟล์สำเร็จ (${newScans.length} รายการ)`;
-          if (addedNamesInThisFile.length > 0) {
-            msg += ` ✨ พบบุคลากรใหม่และเพิ่มเข้าทะเบียนให้อัตโนมัติ ${addedNamesInThisFile.length} คน: ${addedNamesInThisFile.join(', ')}`;
-          }
-          showToast(msg, 'success');
+          renderAll();
+          showToast(`นำเข้าสำเร็จ ${addedCount} รายการ ${newPersonAdded > 0 ? `(พบคนใหม่เพิ่มเข้าทะเบียน ${newPersonAdded} คน)` : ''}`);
 
         } catch (err) {
-          console.error(err);
-          showToast("เกิดข้อผิดพลาดในการอ่านไฟล์ Excel กรุณาตรวจสอบรูปแบบไฟล์", "error");
+          showToast('เกิดข้อผิดพลาดในการอ่านไฟล์', true);
         }
       };
       reader.readAsArrayBuffer(file);
-      event.target.value = '';
+      e.target.value = '';
     }
 
-    // Demo Scenarios
-    function runDemoNewPerson() {
-      const demoScans = [
-        { rawCat: "พนักงานจ้างตามภารกิจ", rawName: "นางสาวกมลชนก รุ่งเรืองกิจ", dtStr: "2026-10-16 07:50:12" },
-        { rawCat: "พนักงานจ้างตามภารกิจ", rawName: "นางสาวกมลชนก รุ่งเรืองกิจ", dtStr: "2026-10-16 16:40:00" },
-        { rawCat: "พนักงานเทศบาล/ลูกจ้างประจำ", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: "2026-10-16 08:05:10" }
-      ];
+    function cleanName(str) {
+      if (!str) return '';
+      return String(str).replace(/^(นาย|นางสาว|นาง|น\.ส\.)\s*/, '').replace(/\s+/g, '').trim();
+    }
 
-      demoScans.forEach(s => {
-        if (!findMatchingMasterPerson(s.rawName)) {
-          autoAddPersonFromScan(s.rawName, s.rawCat);
-        }
+    function switchTab(tabIndex) {
+      const t1 = document.getElementById('tab1');
+      const t2 = document.getElementById('tab2');
+      const b1 = document.getElementById('tab1Btn');
+      const b2 = document.getElementById('tab2Btn');
+
+      if (tabIndex === 1) {
+        t1.classList.remove('hidden');
+        t2.classList.add('hidden');
+        b1.className = 'py-2 px-4 font-bold text-sm border-b-2 border-[#1B365D] text-[#1B365D]';
+        b2.className = 'py-2 px-4 font-semibold text-sm text-slate-500';
+      } else {
+        t1.classList.add('hidden');
+        t2.classList.remove('hidden');
+        b2.className = 'py-2 px-4 font-bold text-sm border-b-2 border-[#1B365D] text-[#1B365D]';
+        b1.className = 'py-2 px-4 font-semibold text-sm text-slate-500';
+      }
+    }
+
+    function clearAllData() {
+      if (confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลประวัติไฟล์สแกนทั้งหมด?')) {
+        scans = [];
+        localStorage.removeItem('app_scans');
+        renderAll();
+        showToast('ล้างข้อมูลเรียบร้อยแล้ว');
+      }
+    }
+
+    function exportExcel() {
+      const selectedDate = document.getElementById('datePicker').value;
+      if (!selectedDate) return showToast('ไม่มีข้อมูลสำหรับส่งออก', true);
+
+      const dayScans = scans.filter(s => s.date === selectedDate);
+      const rows = roster.map((r, i) => {
+        const empScans = dayScans.filter(s => cleanName(s.name) === cleanName(r.fullname)).map(s => s.time).sort();
+        const morning = empScans.find(t => t < "12:00") || '-';
+        const evening = empScans.filter(t => t >= "12:00").pop() || '-';
+        return {
+          "ลำดับ": i + 1,
+          "ชื่อ-นามสกุล": r.fullname,
+          "สังกัด": r.dept,
+          "ตำแหน่ง": r.pos,
+          "เข้าเช้า": morning,
+          "ออกเย็น": evening
+        };
       });
 
-      rawScans = rawScans.concat(demoScans);
-      elements.selDate.value = "2026-10-16";
-      refreshAll();
-      showToast("✨ จำลองแนบไฟล์สแกนที่มีชื่อคนใหม่! ระบบเพิ่ม 'นางสาวกมลชนก รุ่งเรืองกิจ' เข้าทะเบียนให้อัตโนมัติทันที", "success");
-    }
-
-    function runDemoDup() {
-      const targetDate = elements.selDate.value;
-      const extraScans = [
-        { rawCat: "พนักงานเทศบาล/ลูกจ้างประจำ", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: `${targetDate} 08:05:00` },
-        { rawCat: "พนักงานเทศบาล/ลูกจ้างประจำ", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: `${targetDate} 08:06:12` },
-        { rawCat: "พนักงานเทศบาล/ลูกจ้างประจำ", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: `${targetDate} 16:35:00` },
-        { rawCat: "พนักงานเทศบาล/ลูกจ้างประจำ", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: `${targetDate} 16:36:10` }
-      ];
-      rawScans = rawScans.concat(extraScans);
-      refreshAll();
-      showToast("⚠️ จำลองเพิ่มรายการสแกนซ้ำสำหรับ 'พันจ่าเอกสยาม แพทยารักษ์' (เช้า 2 ครั้ง / เย็น 2 ครั้ง)", "warn");
-    }
-
-    function runExamplePreset(exId) {
-      if (exId === "1") {
-        elements.selDate.value = "2026-10-15";
-        rawScans = [
-          { rawCat: "พนักงานเทศบาล/ลูกจ้างประจำ", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: "2026-10-15 08:12:10" },
-          { rawCat: "พนักงานเทศบาล/ลูกจ้างประจำ", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: "2026-10-15 16:40:00" },
-          { rawCat: "พนักงานเทศบาล/ลูกจ้างประจำ", rawName: "ต้นกัญญา รัตนาวดี", dtStr: "2026-10-15 08:42:19" },
-          { rawCat: "พนักงานเทศบาล/ลูกจ้างประจำ", rawName: "พิชาวีร์ เอมดวง", dtStr: "2026-10-15 16:10:00" }
-        ];
-        showToast("🚀 โหลดตัวอย่างแบบที่ 1 (มาตรฐาน 3 คอลัมน์) เรียบร้อยแล้ว", "success");
-      } else if (exId === "2") {
-        runDemoNewPerson();
-        return;
-      } else if (exId === "3") {
-        elements.selDate.value = "2026-10-17";
-        rawScans = [
-          { rawCat: "", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: "2026-10-17 08:02:15" },
-          { rawCat: "", rawName: "นายธนะชัย แสนสุขสกุลชล", dtStr: "2026-10-17 08:09:45" },
-          { rawCat: "", rawName: "นางสาวอารยา สุขสวัสดิ์", dtStr: "2026-10-17 08:00:05" }
-        ];
-        autoAddPersonFromScan("นางสาวอารยา สุขสวัสดิ์");
-        showToast("🚀 โหลดตัวอย่างแบบที่ 3 (ย่อ 2 คอลัมน์) ดึงสังกัดจากทะเบียนให้อัตโนมัติ", "success");
-      } else if (exId === "4") {
-        elements.selDate.value = "2026-10-18";
-        rawScans = [
-          { rawCat: "พนักงานเทศบาล", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: "2026-10-18 07:58:12" },
-          { rawCat: "พนักงานเทศบาล", rawName: "นางสาวกันตา ธวาบุญรัศมี", dtStr: "2026-10-18 08:11:34" },
-          { rawCat: "พนักงานจ้างตามภารกิจ", rawName: "นายณัฐวุฒิ เจริญสุข", dtStr: "2026-10-18 07:49:30" }
-        ];
-        autoAddPersonFromScan("นายณัฐวุฒิ เจริญสุข", "พนักงานจ้างตามภารกิจ");
-        showToast("🚀 โหลดตัวอย่างแบบที่ 4 (แยกชื่อ-สกุล + พ.ศ. 2569) แปลงปีให้อัตโนมัติ", "success");
-      } else if (exId === "5") {
-        elements.selDate.value = "2026-10-19";
-        elements.prevDate.value = "2026-10-18";
-        rawScans = [
-          { rawCat: "พนักงานเทศบาล", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: "2026-10-18 16:45:10" },
-          { rawCat: "พนักงานเทศบาล", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: "2026-10-19 08:04:22" }
-        ];
-        showToast("🚀 โหลดตัวอย่างแบบที่ 5 (แยกคอลัมน์วัน-เวลา + เช็คออกเย็นเมื่อวาน)", "success");
-      }
-      refreshAll();
-    }
-
-    function resetAllData() {
-      masterRoster = JSON.parse(JSON.stringify(INITIAL_ROSTER));
-      rawScans = JSON.parse(JSON.stringify(INITIAL_SCANS));
-      elements.selDate.value = "2026-10-14";
-      elements.prevDate.value = "2026-10-13";
-      elements.lateTimeInput.value = "08:30";
-      elements.outTimeInput.value = "16:30";
-      elements.filterType.value = "ALL";
-      elements.filterDept.value = "ALL";
-      elements.filterStatus.value = "ALL";
-      elements.searchEmp.value = "";
-      refreshAll();
-      showToast("↺ คืนค่าข้อมูลตั้งต้น 14/10/2026 เรียบร้อยแล้ว", "info");
-    }
-
-    // Export Processed Results to Excel (.xlsx)
-    function exportProcessedResultsXlsx() {
-      const processed = processScanData();
-      const targetDate = elements.selDate.value;
-
-      const exportRows = processed.map((emp, i) => ({
-        "ลำดับ": i + 1,
-        "ประเภทบุคลากร": emp.type,
-        "สังกัด/กอง": emp.dept,
-        "ชื่อ-นามสกุล": emp.fullname,
-        "ตำแหน่ง": emp.pos,
-        "เวลาเข้า (เช้า)": emp.firstIn || '-',
-        "สถานะเข้าเช้า": emp.statusIn,
-        "เวลาออก (เย็น)": emp.lastOut || '-',
-        "สถานะออกเย็น": emp.statusOut,
-        "ครั้งที่สแกน (เช้า/เย็น)": `${emp.morningCount} / ${emp.eveningCount}`,
-        "ผลตรวจสแกนซ้ำ": emp.isDuplicate ? `⚠️ สแกนซ้ำ (เช้า ${emp.morningCount} / เย็น ${emp.eveningCount})` : 'ปกติ (1 ครั้ง)',
-        "สรุปผลการตรวจสอบ": emp.overallSummary,
-        "เวลาออกเย็น (วันก่อน)": emp.prevOut || '-',
-        "หมายเหตุที่มา": emp.autoAdded ? '✨ เพิ่มเข้าทะเบียนให้อัตโนมัติ' : 'ทะเบียนหลัก'
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(exportRows);
+      const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, `ผลตรวจ_${targetDate}`);
-      XLSX.writeFile(wb, `รายงานผลตรวจเวลาสแกนนิ้ว_${targetDate}.xlsx`);
-      showToast("📊 ส่งออกไฟล์ Excel ผลการตรวจสอบเรียบร้อยแล้ว", "success");
-    }
-
-    // Download Sample Files Generator
-    function downloadSampleXlsx() {
-      const sampleData = [
-        { "ตำแหน่ง/ประเภท": "พนักงานเทศบาล", "ชื่อ-สกุล": "พันจ่าเอกสยาม แพทยารักษ์", "วัน/เวลาสแกน": "2026-10-15 08:12:10" },
-        { "ตำแหน่ง/ประเภท": "พนักงานเทศบาล", "ชื่อ-สกุล": "พันจ่าเอกสยาม แพทยารักษ์", "วัน/เวลาสแกน": "2026-10-15 16:40:00" },
-        { "ตำแหน่ง/ประเภท": "พนักงานเทศบาล", "ชื่อ-สกุล": "นางสาวต้นกัญญา รัตนาวดี", "วัน/เวลาสแกน": "2026-10-15 08:42:19" },
-        { "ตำแหน่ง/ประเภท": "พนักงานจ้างตามภารกิจ", "ชื่อ-สกุล": "นางสาวกมลชนก รุ่งเรืองกิจ", "วัน/เวลาสแกน": "2026-10-15 07:50:00" }
-      ];
-
-      const ws = XLSX.utils.json_to_sheet(sampleData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "ตัวอย่างสแกนนิ้ว");
-      XLSX.writeFile(wb, "ตัวอย่างไฟล์สแกนนิ้ว_พร้อมเพิ่มคนอัตโนมัติ.xlsx");
-      showToast("📥 ดาวน์โหลดไฟล์ตัวอย่าง .xlsx เรียบร้อยแล้ว", "success");
+      XLSX.utils.book_append_sheet(wb, ws, "สรุปผล");
+      XLSX.writeFile(wb, `รายงานสแกนนิ้ว_${selectedDate}.xlsx`);
     }
   </script>
 </body>
