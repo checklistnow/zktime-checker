@@ -3,443 +3,1070 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ระบบเช็คเวลาสแกนนิ้ว & จัดการรายชื่อบุคลากร</title>
+  <title>ระบบตรวจสอบเวลาเข้า-ออกงาน และเพิ่มรายชื่อบุคลากรอัตโนมัติเมื่อแนบไฟล์</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Supabase JS Client v2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Noto Sans Thai', sans-serif; background-color: #f8fafc; color: #0f172a; }
+    body { font-family: 'Noto Sans Thai', 'Inter', sans-serif; background-color: #f1f5f9; color: #0f172a; }
     .table-sticky th { position: sticky; top: 0; z-index: 10; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col p-4 max-w-7xl mx-auto space-y-4">
+<body class="min-h-screen flex flex-col">
+  <!-- Top Header & Action Buttons -->
+  <header class="bg-[#1B365D] text-white shadow-lg border-b border-blue-900">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="bg-emerald-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">✨ บันทึกข้อมูลถาวร (LocalStorage Auto-Save)</span>
+          <span id="supabaseStatusBadge" class="bg-slate-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">⚡ โหมดเก็บบันทึกในเครื่อง</span>
+          <span class="text-blue-200 text-xs">รองรับไฟล์ .xlsx / .xls / .xlsm / .csv จากเครื่องสแกนนิ้ว</span>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-bold mt-1">ระบบตรวจสอบเวลาเข้า-ออกงาน เช็คสแกนนิ้วซ้ำ และเพิ่มชื่อบุคลากรอัตโนมัติ</h1>
+        <p class="text-xs sm:text-sm text-blue-100 mt-0.5">เมื่อแนบไฟล์สแกนนิ้ว ระบบจะตรวจสอบรายชื่อทั้งหมด หากไม่พบในทะเบียนหลักจะเพิ่มชื่อเข้าทะเบียนให้อัตโนมัติทันทีพร้อมคำนวณเวลาเข้า-ออก</p>
+      </div>
 
-  <!-- Header & Import Controls -->
-  <header class="bg-[#1B365D] text-white p-5 rounded-2xl shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-    <div>
-      <h1 class="text-xl font-bold">ระบบตรวจสอบเวลาสแกนนิ้ว & จัดการทะเบียนบุคลากร</h1>
-      <p class="text-xs text-blue-200 mt-1">💾 บันทึกข้อมูลประวัติสแกนแยกวันลงเครื่องอัตโนมัติ + ลบ/เพิ่มรายชื่อได้ตลอดเวลา</p>
-    </div>
-    <div class="flex flex-wrap gap-2">
-      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden" />
-      <button onclick="document.getElementById('fileInput').click()" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow transition">
-        📂 นำเข้าไฟล์สแกนนิ้ว (เพิ่มสะสมตามวัน)
-      </button>
-      <button onclick="exportExcel()" class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow transition">
-        📊 ส่งออก Excel
-      </button>
+      <!-- Primary Clickable Import/Download Buttons -->
+      <div class="flex flex-wrap items-center gap-2">
+        <input type="file" id="fileInputAppend" accept=".xlsx,.xls,.xlsm,.csv" class="hidden" />
+        <input type="file" id="fileInputReplace" accept=".xlsx,.xls,.xlsm,.csv" class="hidden" />
+
+        <button id="btnImportAppend" type="button" class="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
+          <span>📂 1. กดนำเข้าไฟล์สแกนนิ้ว (เก็บประวัติ + เพิ่มคนใหม่อัตโนมัติ)</span>
+        </button>
+
+        <button id="btnImportReplace" type="button" class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-semibold text-sm px-4 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
+          <span>⚡ 2. กดนำเข้าไฟล์รายวัน (เช็คเฉพาะไฟล์นี้ + เพิ่มคนใหม่อัตโนมัติ)</span>
+        </button>
+
+        <button id="btnDownloadXlsm" type="button" class="bg-white hover:bg-blue-50 text-[#1B365D] font-semibold text-sm px-3.5 py-2.5 rounded-lg shadow flex items-center gap-1.5 border border-blue-200 transition">
+          <span>📥 ดาวน์โหลดไฟล์ Excel (.xlsm) รุ่นเพิ่มคนอัตโนมัติ</span>
+        </button>
+
+        <button id="btnExportXlsx" type="button" class="bg-blue-700 hover:bg-blue-600 text-white font-medium text-sm px-3.5 py-2.5 rounded-lg shadow flex items-center gap-1.5 border border-blue-500 transition">
+          <span>📊 ส่งออกผลตรวจเป็น Excel (.xlsx)</span>
+        </button>
+      </div>
     </div>
   </header>
 
-  <!-- Status Notification -->
-  <div id="toast" class="hidden p-3 rounded-xl text-sm font-medium border"></div>
-
-  <!-- Control Bar: Select Date & Filters -->
-  <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-    <div>
-      <label class="block text-xs font-bold text-slate-700 mb-1">📅 เลือกวันที่ต้องการดูข้อมูล</label>
-      <select id="datePicker" onchange="renderAll()" class="w-full bg-amber-50 border-2 border-[#1B365D] rounded-lg p-2 text-sm font-bold text-[#1B365D]"></select>
-    </div>
-    <div>
-      <label class="block text-xs font-semibold text-slate-600 mb-1">🔍 ค้นหาชื่อ/ตำแหน่ง</label>
-      <input type="text" id="searchInput" oninput="renderAll()" placeholder="พิมพ์ชื่อเพื่อค้นหา..." class="w-full border border-slate-300 rounded-lg p-2 text-sm" />
-    </div>
-    <div>
-      <label class="block text-xs font-semibold text-slate-600 mb-1">⏰ เกณฑ์เข้างานเช้า (สายถ้าเกิน)</label>
-      <input type="time" id="lateTime" value="08:30" onchange="renderAll()" class="w-full border border-slate-300 rounded-lg p-2 text-sm" />
-    </div>
-    <div class="flex gap-2">
-      <button onclick="clearAllData()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-semibold text-xs py-2.5 rounded-lg transition">
-        ↺ ล้างข้อมูลทั้งหมด
-      </button>
-    </div>
-  </section>
-
-  <!-- Main Tabs -->
-  <div class="flex border-b border-slate-300 space-x-2">
-    <button id="tab1Btn" onclick="switchTab(1)" class="py-2 px-4 font-bold text-sm border-b-2 border-[#1B365D] text-[#1B365D]">
-      📋 สรุปเวลาเข้า-ออกงานประจำวัน (<span id="countDaily">0</span> คน)
-    </button>
-    <button id="tab2Btn" onclick="switchTab(2)" class="py-2 px-4 font-semibold text-sm text-slate-500">
-      👥 จัดการทะเบียนรายชื่อบุคลากร (ลบ/เพิ่มคน) (<span id="countRoster">0</span> คน)
-    </button>
-  </div>
-
-  <!-- TAB 1: Daily Summary Table -->
-  <div id="tab1" class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-    <div class="overflow-x-auto max-h-[550px]">
-      <table class="w-full text-xs text-left border-collapse">
-        <thead class="bg-[#1B365D] text-white table-sticky">
-          <tr>
-            <th class="p-3 text-center">#</th>
-            <th class="p-3">สังกัด / กอง</th>
-            <th class="p-3">ชื่อ-นามสกุล</th>
-            <th class="p-3">ตำแหน่ง</th>
-            <th class="p-3 text-center">เวลาเข้า (เช้า)</th>
-            <th class="p-3 text-center">สถานะเช้า</th>
-            <th class="p-3 text-center">เวลาออก (เย็น)</th>
-            <th class="p-3 text-center">สถานะเย็น</th>
-            <th class="p-3 text-center">สรุปผล</th>
-          </tr>
-        </thead>
-        <tbody id="dailyTbody" class="divide-y divide-slate-200"></tbody>
-      </table>
+  <!-- Notification Toast Banner -->
+  <div id="toastBanner" class="hidden max-w-7xl mx-auto mt-3 px-4 w-full">
+    <div id="toastBox" class="rounded-lg px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm border">
+      <span id="toastText"></span>
+      <button id="btnCloseToast" type="button" class="text-xs underline ml-4 shrink-0">ปิด</button>
     </div>
   </div>
 
-  <!-- TAB 2: Manage Roster & Delete People -->
-  <div id="tab2" class="hidden space-y-4">
-    <!-- Add Person Box -->
-    <div class="bg-purple-50 p-4 rounded-xl border border-purple-200 flex flex-col md:flex-row gap-2 items-end">
-      <div class="flex-1">
-        <label class="block text-xs font-bold text-purple-900 mb-1">ชื่อ-นามสกุล</label>
-        <input type="text" id="addName" placeholder="เช่น นายสมชาย ใจดี" class="w-full border border-purple-300 rounded-lg p-2 text-xs" />
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 py-4 flex-1 w-full space-y-4">
+    <!-- Control Bar: Date Selection, Time Thresholds, Demo Auto-Add & Duplicate Buttons -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+        <div>
+          <label for="selDate" class="block text-xs font-bold text-slate-700 mb-1">📅 วันที่ต้องการตรวจสอบหลัก (ดูย้อนหลัง)</label>
+          <input type="date" id="selDate" value="2026-10-14" class="w-full bg-amber-50 border-2 border-[#1B365D] rounded-lg px-3 py-1.5 text-sm font-bold text-[#1B365D]" />
+        </div>
+        <div>
+          <label for="QuickDateSelect" class="block text-xs font-semibold text-slate-600 mb-1">🗂️ เลือกจากวันที่ที่มีข้อมูลในระบบ</label>
+          <select id="QuickDateSelect" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-800"></select>
+        </div>
+        <div>
+          <label for="prevDate" class="block text-xs font-semibold text-slate-600 mb-1">⏪ วันที่เช็คเวลาออกเย็นย้อนหลัง (วันก่อน)</label>
+          <input type="date" id="prevDate" value="2026-10-13" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-700" />
+        </div>
+        <div>
+          <label for="lateTimeInput" class="block text-xs font-semibold text-slate-600 mb-1">⏰ เกณฑ์เข้างานเช้า (ปกติ ≤)</label>
+          <input type="time" id="lateTimeInput" value="08:30" step="60" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-800" />
+        </div>
+        <div>
+          <label for="outTimeInput" class="block text-xs font-semibold text-slate-600 mb-1">🕔 เกณฑ์ออกงานเย็น (ปกติ ≥)</label>
+          <input type="time" id="outTimeInput" value="16:30" step="60" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-800" />
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <button id="btnDemoNewPerson" type="button" class="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 font-semibold text-xs px-2.5 py-2 rounded-lg transition" title="จำลองแนบไฟล์ที่มีชื่อคนใหม่ที่ไม่อยู่ในทะเบียน">
+            ✨ ทดลองแนบไฟล์มีคนใหม่
+          </button>
+          <button id="btnDemoDup" type="button" class="bg-orange-100 hover:bg-orange-200 text-orange-900 border border-orange-300 font-semibold text-xs px-2.5 py-2 rounded-lg transition" title="จำลองเพิ่มเวลาสแกนซ้ำ">
+            🧪 จำลองสแกนซ้ำ
+          </button>
+          <button id="btnResetData" type="button" class="bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 font-medium text-xs px-2.5 py-2 rounded-lg transition" title="ล้างแคชที่บันทึกไว้ในเครื่องแล้วกลับค่าตั้งต้น">
+            ↺ รีเซ็ต
+          </button>
+        </div>
       </div>
-      <div>
-        <label class="block text-xs font-bold text-purple-900 mb-1">สังกัด/กอง</label>
-        <input type="text" id="addDept" placeholder="เช่น สำนักปลัด" class="w-full border border-purple-300 rounded-lg p-2 text-xs" />
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-purple-900 mb-1">ตำแหน่ง</label>
-        <input type="text" id="addPos" placeholder="เช่น พนักงานจ้าง" class="w-full border border-purple-300 rounded-lg p-2 text-xs" />
-      </div>
-      <button onclick="addPerson()" class="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition">
-        + เพิ่มชื่อเข้าทะเบียน
-      </button>
-    </div>
+    </section>
 
-    <!-- Roster List with Delete Button -->
-    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-      <div class="overflow-x-auto max-h-[500px]">
-        <table class="w-full text-xs text-left border-collapse">
-          <thead class="bg-slate-800 text-white table-sticky">
-            <tr>
-              <th class="p-3 text-center">#</th>
-              <th class="p-3">ชื่อ-นามสกุล</th>
-              <th class="p-3">สังกัด/กอง</th>
-              <th class="p-3">ตำแหน่ง</th>
-              <th class="p-3 text-center">จัดการ</th>
+    <!-- KPI Summary Cards -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+      <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
+        <div class="text-xs font-semibold text-slate-500">บุคลากรทั้งหมด</div>
+        <div id="kpiTotalEmp" class="text-2xl font-bold text-[#1B365D] mt-0.5">0</div>
+        <div class="text-[11px] text-slate-400">รวมที่เพิ่มอัตโนมัติ</div>
+      </div>
+      <div class="bg-purple-50 rounded-xl p-3 border-2 border-purple-300 shadow-sm">
+        <div class="text-xs font-bold text-purple-800">✨ เพิ่มคนอัตโนมัติ</div>
+        <div id="kpiAutoAdded" class="text-2xl font-bold text-purple-700 mt-0.5">0</div>
+        <div class="text-[11px] text-purple-700">พบชื่อใหม่จากไฟล์สแกน</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-blue-200 shadow-sm">
+        <div class="text-xs font-semibold text-blue-700">สแกนเข้าเช้า</div>
+        <div id="kpiMorningIn" class="text-2xl font-bold text-blue-800 mt-0.5">0</div>
+        <div class="text-[11px] text-slate-400">มีเวลาเข้าช่วงเช้า</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-emerald-200 shadow-sm">
+        <div class="text-xs font-semibold text-emerald-700">มาทันเวลา</div>
+        <div id="kpiOnTime" class="text-2xl font-bold text-emerald-700 mt-0.5">0</div>
+        <div class="text-[11px] text-slate-400">ทันเกณฑ์เวลาเข้า</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-amber-200 shadow-sm">
+        <div class="text-xs font-semibold text-amber-700">มาสาย</div>
+        <div id="kpiLate" class="text-2xl font-bold text-amber-700 mt-0.5">0</div>
+        <div class="text-[11px] text-slate-400">หลังเกณฑ์เวลาเช้า</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-indigo-200 shadow-sm">
+        <div class="text-xs font-semibold text-indigo-700">สแกนออกเย็น</div>
+        <div id="kpiEveningOut" class="text-2xl font-bold text-indigo-800 mt-0.5">0</div>
+        <div class="text-[11px] text-slate-400">มีเวลาออกช่วงเย็น</div>
+      </div>
+      <div class="bg-orange-50 rounded-xl p-3 border-2 border-orange-300 shadow-sm">
+        <div class="text-xs font-bold text-orange-800">⚠️ พบคนสแกนซ้ำ</div>
+        <div id="kpiDupEmp" class="text-2xl font-bold text-orange-700 mt-0.5">0</div>
+        <div class="text-[11px] text-orange-700">สแกนเกิน 1 ครั้ง/กะ</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-rose-200 shadow-sm">
+        <div class="text-xs font-semibold text-rose-700">ไม่พบข้อมูลสแกน</div>
+        <div id="kpiMissing" class="text-2xl font-bold text-rose-700 mt-0.5">0</div>
+        <div class="text-[11px] text-slate-400">ขาดสแกนในวันนี้</div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="flex flex-wrap gap-2 border-b border-slate-300 pb-2">
+      <button id="tabBtnDaily" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-[#1B365D] text-white shadow-sm">
+        📋 1. ตารางสรุปรายวันและเช็คย้อนหลัง (<span id="dailyCountBadge">0</span> คน)
+      </button>
+      <button id="tabBtnCat" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
+        🏛️ 2. สรุปแยกตามประเภทบุคลากรและกอง/สำนัก
+      </button>
+      <button id="tabBtnRaw" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
+        🕒 3. ข้อมูลสแกนดิบและรายการสแกนซ้ำ (<span id="rawCountBadge">0</span> รายการ)
+      </button>
+      <button id="tabBtnRoster" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
+        👥 4. ทะเบียนรายชื่อหลักและคนเพิ่มอัตโนมัติ (<span id="rosterCountBadge">0</span> คน)
+      </button>
+      <button id="tabBtnExamples" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 border border-amber-500 shadow-sm">
+        📖 5. ตัวอย่างไฟล์สแกนนิ้ว & กดทดลองใช้ (ครบ 5 แบบ)
+      </button>
+    </nav>
+
+    <!-- TAB 1: Daily Table -->
+    <section id="viewDaily" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="filterType" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
+            <option value="ALL">ทุกประเภทบุคลากร</option>
+            <option value="พนักงานเทศบาล">พนักงานเทศบาล</option>
+            <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
+            <option value="พนักงานจ้างตามภารกิจ">พนักงานจ้างตามภารกิจ</option>
+            <option value="พนักงานจ้างทั่วไป">พนักงานจ้างทั่วไป</option>
+          </select>
+
+          <select id="filterDept" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
+            <option value="ALL">ทุกสังกัด / สำนัก / กอง</option>
+            <option value="ผู้บริหารท้องถิ่น">ผู้บริหารท้องถิ่น</option>
+            <option value="สำนักปลัดเทศบาล">สำนักปลัดเทศบาล</option>
+            <option value="กองคลัง">กองคลัง</option>
+            <option value="กองช่าง">กองช่าง</option>
+            <option value="กองสาธารณสุขและสิ่งแวดล้อม">กองสาธารณสุขและสิ่งแวดล้อม</option>
+            <option value="กองการศึกษา">กองการศึกษา</option>
+            <option value="กองสวัสดิการสังคม">กองสวัสดิการสังคม</option>
+            <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)">✨ ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)</option>
+          </select>
+
+          <select id="filterStatus" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
+            <option value="ALL">ทุกสถานะการสแกน</option>
+            <option value="AUTO_ADDED">✨ เฉพาะคนที่ระบบเพิ่มชื่อให้อัตโนมัติ</option>
+            <option value="SCANNED">สแกนแล้วทั้งหมด</option>
+            <option value="DUP">⚠️ เฉพาะคนสแกนซ้ำ (สแกนซ้ำ)</option>
+            <option value="LATE">เฉพาะคนมาสาย</option>
+            <option value="MISSING">เฉพาะคนยังไม่พบข้อมูลสแกน</option>
+          </select>
+        </div>
+
+        <div class="w-full sm:w-64">
+          <input type="text" id="searchEmp" placeholder="🔍 ค้นหาชื่อ-สกุล หรือตำแหน่ง..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs" />
+        </div>
+      </div>
+
+      <div class="overflow-x-auto max-h-[540px] border border-slate-200 rounded-lg">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="bg-[#1B365D] text-white table-sticky">
+              <th class="py-2.5 px-2.5 text-center">#</th>
+              <th class="py-2.5 px-2.5">ประเภทบุคลากร</th>
+              <th class="py-2.5 px-2.5">สังกัด/กอง</th>
+              <th class="py-2.5 px-2.5">ชื่อ-นามสกุล</th>
+              <th class="py-2.5 px-2.5">ตำแหน่งสายงาน</th>
+              <th class="py-2.5 px-2.5 text-center">เวลาเข้า (เช้า)</th>
+              <th class="py-2.5 px-2.5 text-center">สถานะเช้า</th>
+              <th class="py-2.5 px-2.5 text-center">เวลาออก (เย็น)</th>
+              <th class="py-2.5 px-2.5 text-center">สถานะเย็น</th>
+              <th class="py-2.5 px-2.5 text-center">เช้า/เย็น (ครั้ง)</th>
+              <th class="py-2.5 px-2.5 text-center bg-orange-700">เช็คสแกนซ้ำ</th>
+              <th class="py-2.5 px-2.5 text-center">สรุปผลตรวจ</th>
+              <th class="py-2.5 px-2.5 text-center bg-slate-700">เวลาออกเย็น (วันก่อน)</th>
             </tr>
           </thead>
-          <tbody id="rosterTbody" class="divide-y divide-slate-200"></tbody>
+          <tbody id="dailyTableBody" class="divide-y divide-slate-200"></tbody>
         </table>
       </div>
-    </div>
-  </div>
+    </section>
+
+    <!-- TAB 2: Category Breakdown -->
+    <section id="viewCat" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <h2 class="text-sm font-bold text-[#1B365D] mb-3">1. สรุปการสแกนแยกตามประเภทบุคลากร</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse">
+            <thead>
+              <tr class="bg-[#1B365D] text-white">
+                <th class="p-2 text-left">ประเภทบุคลากร</th>
+                <th class="p-2 text-right">ทั้งหมด</th>
+                <th class="p-2 text-right">เข้าเช้า</th>
+                <th class="p-2 text-right">ทันเวลา</th>
+                <th class="p-2 text-right">มาสาย</th>
+                <th class="p-2 text-right">ออกเย็น</th>
+                <th class="p-2 text-right bg-orange-700">สแกนซ้ำ</th>
+                <th class="p-2 text-right">ไม่พบสแกน</th>
+              </tr>
+            </thead>
+            <tbody id="catSummaryBody" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <h2 class="text-sm font-bold text-[#1B365D] mb-3">2. สรุปการสแกนแยกตามสังกัด / สำนัก / กอง</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse">
+            <thead>
+              <tr class="bg-[#1B365D] text-white">
+                <th class="p-2 text-left">สังกัด / กอง</th>
+                <th class="p-2 text-right">ทั้งหมด</th>
+                <th class="p-2 text-right">เข้าเช้า</th>
+                <th class="p-2 text-right">ทันเวลา</th>
+                <th class="p-2 text-right">มาสาย</th>
+                <th class="p-2 text-right">ออกเย็น</th>
+                <th class="p-2 text-right bg-orange-700">สแกนซ้ำ</th>
+                <th class="p-2 text-right">ไม่พบสแกน</th>
+              </tr>
+            </thead>
+            <tbody id="deptSummaryBody" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Raw Scans -->
+    <section id="viewRaw" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-sm font-bold text-[#1B365D]">รายการข้อมูลสแกนนิ้วดิบทั้งหมดในระบบ และผลตรวจบรรทัดที่สแกนซ้ำ</h2>
+          <p class="text-xs text-slate-500">หากมีชื่อในไฟล์สแกนที่ไม่อยู่ในทะเบียนหลัก ระบบจะเพิ่มเข้าทะเบียนหลักให้อัตโนมัติทันที</p>
+        </div>
+        <select id="filterRawDup" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
+          <option value="ALL">แสดงทุกบรรทัดสแกน</option>
+          <option value="DUP">⚠️ เฉพาะบรรทัดที่ขึ้น "สแกนซ้ำ"</option>
+          <option value="AUTO_ADDED">✨ เฉพาะบรรทัดของคนที่เพิ่มเข้าทะเบียนอัตโนมัติ</option>
+        </select>
+      </div>
+      <div class="overflow-x-auto max-h-[500px] border border-slate-200 rounded-lg">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="bg-slate-800 text-white table-sticky">
+              <th class="p-2 text-center">#</th>
+              <th class="p-2">ประเภทในไฟล์ดิบ</th>
+              <th class="p-2">ชื่อในไฟล์ดิบ</th>
+              <th class="p-2">วัน/เวลาสแกน</th>
+              <th class="p-2">วันที่</th>
+              <th class="p-2">เวลา</th>
+              <th class="p-2">ช่วงเวลา</th>
+              <th class="p-2">ประเภทตามระบบราชการ</th>
+              <th class="p-2">สังกัด/กอง</th>
+              <th class="p-2 text-center">ครั้งที่ในกะ</th>
+              <th class="p-2 text-center bg-orange-700">ผลตรวจสแกนซ้ำ</th>
+            </tr>
+          </thead>
+          <tbody id="rawTableBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 4: Master Roster with Delete Button -->
+    <section id="viewRoster" class="hidden space-y-4">
+      <!-- Quick Add Form -->
+      <div class="bg-purple-50 rounded-xl shadow-sm border border-purple-200 p-4">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-bold text-purple-900">➕ เพิ่มรายชื่อบุคลากรด้วยตนเอง</h3>
+            <p class="text-xs text-purple-700">ข้อมูลที่เพิ่มจะถูกบันทึกถาวรทันที ไม่หายเมื่อรีเฟรชหน้าเว็บ</p>
+          </div>
+          <div class="flex flex-wrap items-end gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">ชื่อ-นามสกุล</label>
+              <input type="text" id="manualFullname" placeholder="เช่น นายสมชาย ใจดี" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs w-44" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">ประเภทบุคลากร</label>
+              <select id="manualType" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800">
+                <option value="พนักงานจ้างทั่วไป">พนักงานจ้างทั่วไป</option>
+                <option value="พนักงานจ้างตามภารกิจ">พนักงานจ้างตามภารกิจ</option>
+                <option value="พนักงานเทศบาล">พนักงานเทศบาล</option>
+                <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">สังกัด/กอง</label>
+              <select id="manualDept" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800">
+                <option value="สำนักปลัดเทศบาล">สำนักปลัดเทศบาล</option>
+                <option value="กองคลัง">กองคลัง</option>
+                <option value="กองช่าง">กองช่าง</option>
+                <option value="กองสาธารณสุขและสิ่งแวดล้อม">กองสาธารณสุขและสิ่งแวดล้อม</option>
+                <option value="กองการศึกษา">กองการศึกษา</option>
+                <option value="กองสวัสดิการสังคม">กองสวัสดิการสังคม</option>
+                <option value="ผู้บริหารท้องถิ่น">ผู้บริหารท้องถิ่น</option>
+                <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)">ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">ตำแหน่ง</label>
+              <input type="text" id="manualPos" placeholder="เช่น คนงาน" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs w-36" />
+            </div>
+            <button id="btnManualAddPerson" type="button" class="bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg shadow transition">
+              + เพิ่มเข้าทะเบียน
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+          <h2 class="text-sm font-bold text-[#1B365D] mb-2">ทะเบียนบุคลากรหลักและรายชื่อที่เพิ่มอัตโนมัติ (แก้ไขตำแหน่ง/ลบได้)</h2>
+          <div class="overflow-x-auto max-h-[460px] border border-slate-200 rounded-lg">
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="bg-[#1B365D] text-white table-sticky">
+                  <th class="p-2">#</th>
+                  <th class="p-2">ประเภทบุคลากร</th>
+                  <th class="p-2">สังกัด/กอง</th>
+                  <th class="p-2">ชื่อ-นามสกุลเต็ม</th>
+                  <th class="p-2">ตำแหน่ง</th>
+                  <th class="p-2 text-center">ที่มา</th>
+                  <th class="p-2 text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="rosterTableBody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+          <h2 class="text-sm font-bold text-[#1B365D]">ตารางเทียบชื่อสะกดต่าง (15 คู่)</h2>
+          <div class="overflow-x-auto max-h-[460px] border border-slate-200 rounded-lg">
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-800 text-white table-sticky">
+                  <th class="p-2 text-left">ชื่อในไฟล์ดิบ</th>
+                  <th class="p-2 text-left">ชื่อในทะเบียนหลัก</th>
+                </tr>
+              </thead>
+              <tbody id="aliasTableBody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: Examples Showcase -->
+    <section id="viewExamples" class="hidden space-y-4">
+      <div class="bg-gradient-to-r from-[#1B365D] to-blue-800 text-white rounded-xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <span class="bg-amber-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">คู่มือตัวอย่างการใช้งานจริง</span>
+          <h2 class="text-lg sm:text-xl font-bold mt-1.5">ตัวอย่างรูปแบบไฟล์สแกนนิ้วทั้ง 5 รูปแบบ & สถานการณ์การตรวจสอบ</h2>
+          <p class="text-xs sm:text-sm text-blue-100 mt-1">คลิกปุ่ม <strong>"🚀 กดทดลองจำลองข้อมูลชุดนี้"</strong> เพื่อดูผลลัพธ์การทำงานทันที หรือกดดาวน์โหลดไฟล์ตัวอย่าง</p>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <button id="btnDownloadAllExamplesXlsx" type="button" class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
+            <span>📦 ดาวน์โหลดไฟล์รวมตัวอย่างทั้ง 5 แบบ (.xlsx)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Example 1 -->
+        <div class="bg-white rounded-xl shadow-sm border-2 border-emerald-200 p-4 flex flex-col justify-between space-y-3">
+          <div class="space-y-2">
+            <span class="bg-emerald-100 text-emerald-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 1 • มาตรฐานเครื่องสแกนนิ้วทั่วไป (3 คอลัมน์)</span>
+            <h3 class="text-sm font-bold text-[#1B365D]">สแกนเข้าเช้า + สแกนออกเย็นครบถ้วน / เช็คคนมาสาย</h3>
+            <p class="text-xs text-slate-600">ตำแหน่ง/ประเภท, ชื่อ-สกุล และ วัน/เวลา ทั้งรอบเช้าและรอบเย็นในชีตเดียวกัน</p>
+          </div>
+          <button type="button" data-ex-id="1" class="btn-run-example bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
+            🚀 กดทดลองจำลองแบบที่ 1
+          </button>
+        </div>
+        <!-- Example 2 -->
+        <div class="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 flex flex-col justify-between space-y-3">
+          <div class="space-y-2">
+            <span class="bg-purple-100 text-purple-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 2 • คนใหม่ + สแกนซ้ำ</span>
+            <h3 class="text-sm font-bold text-[#1B365D]">ระบบเพิ่มคนใหม่เข้าทะเบียนอัตโนมัติ (✨) + แจ้งเตือนสแกนซ้ำ (⚠️)</h3>
+            <p class="text-xs text-slate-600">เมื่อแนบไฟล์ที่มีชื่อพนักงานใหม่ที่ไม่เคยมีในทะเบียน ระบบจะเพิ่มให้อัตโนมัติ</p>
+          </div>
+          <button type="button" data-ex-id="2" class="btn-run-example bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
+            🚀 กดทดลองจำลองแบบที่ 2
+          </button>
+        </div>
+        <!-- Example 3 -->
+        <div class="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 flex flex-col justify-between space-y-3">
+          <div class="space-y-2">
+            <span class="bg-blue-100 text-blue-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 3 • ไฟล์ย่อ (2 คอลัมน์)</span>
+            <h3 class="text-sm font-bold text-[#1B365D]">ดึงสังกัดและตำแหน่งจากทะเบียนหลักให้อัตโนมัติ</h3>
+            <p class="text-xs text-slate-600">มีแค่ 2 คอลัมน์ (ชื่อ-สกุล และ วัน/เวลา)</p>
+          </div>
+          <button type="button" data-ex-id="3" class="btn-run-example bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
+            🚀 กดทดลองจำลองแบบที่ 3
+          </button>
+        </div>
+        <!-- Example 4 -->
+        <div class="bg-white rounded-xl shadow-sm border-2 border-amber-200 p-4 flex flex-col justify-between space-y-3">
+          <div class="space-y-2">
+            <span class="bg-amber-100 text-amber-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 4 • แยกชื่อ/สกุล + พ.ศ. 2569</span>
+            <h3 class="text-sm font-bold text-[#1B365D]">รวมชื่อ-นามสกุล และแปลง พ.ศ. เป็น ค.ศ. 2026</h3>
+            <p class="text-xs text-slate-600">รองรับคอลัมน์ชื่อและนามสกุลแยกกัน</p>
+          </div>
+          <button type="button" data-ex-id="4" class="btn-run-example bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-3 py-2 rounded-lg shadow-sm transition">
+            🚀 กดทดลองจำลองแบบที่ 4
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <script>
-    // --------------------------------------------------------
-    // STORAGE & INITIAL STATE
-    // --------------------------------------------------------
-    const DEFAULT_ROSTER = [
-      { id: 1, fullname: "พันจ่าเอกสยาม แพทยารักษ์", dept: "ผู้บริหารท้องถิ่น", pos: "ปลัดเทศบาล" },
-      { id: 2, fullname: "นางสาวกันตา ธวาบุญรัศมี", dept: "สำนักปลัดเทศบาล", pos: "หัวหน้าสำนักปลัด" },
-      { id: 3, fullname: "นางสาวต้นกัญญา รัตนาวดี", dept: "สำนักปลัดเทศบาล", pos: "นักทรัพยากรบุคคล" },
-      { id: 4, fullname: "นางพิชาวีร์ เอมดวง", dept: "กองคลัง", pos: "เจ้าพนักงานจัดเก็บรายได้" },
-      { id: 5, fullname: "นายพิชญุตม์ เสริมพงษ์", dept: "กองช่าง", pos: "ผู้อำนวยการกองช่าง" }
-    ];
-
-    let roster = JSON.parse(localStorage.getItem('app_roster')) || DEFAULT_ROSTER;
-    let scans = JSON.parse(localStorage.getItem('app_scans')) || [];
-
-    // Save helpers
-    function saveData() {
-      localStorage.setItem('app_roster', JSON.stringify(roster));
-      localStorage.setItem('app_scans', JSON.stringify(scans));
+    // ========================================================
+    // SUPABASE CONFIGURATION
+    // ========================================================
+   const SUPABASE_URL = 'https://louycthhlxmauphmjmsx.supabase.co';
+   const SUPABASE_ANON_KEY = 'sb_publishable_XxrOenamd5_zbwhU9w__Gg_gtspTFyS';
+    
+    let supabaseClient = null;
+    if (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_URL.startsWith('http')) {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      document.getElementById('supabaseStatusBadge').className = 'bg-emerald-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full';
+      document.getElementById('supabaseStatusBadge').textContent = '⚡ เชื่อมต่อ Cloud Supabase สำเร็จ';
     }
 
-    // --------------------------------------------------------
-    // EVENT LISTENERS & INITIALIZATION
-    // --------------------------------------------------------
-    document.getElementById('fileInput').addEventListener('change', handleFileUpload);
-    window.addEventListener('DOMContentLoaded', () => {
-      renderAll();
+    // Storage Keys
+    const LOCAL_ROSTER_KEY = 'masterRoster_full_v5';
+    const LOCAL_SCANS_KEY = 'rawScans_full_v5';
+
+    // Initial Rosters & Scans Data
+    const INITIAL_ROSTER = [{"id": 1, "type": "พนักงานเทศบาล", "dept": "ผู้บริหารท้องถิ่น", "fname": "พันจ่าเอกสยาม", "lname": "แพทยารักษ์", "pos": "ปลัดเทศบาล (นักบริหารงานท้องถิ่น)", "fullname": "พันจ่าเอกสยาม แพทยารักษ์"}, {"id": 2, "type": "พนักงานเทศบาล", "dept": "ผู้บริหารท้องถิ่น", "fname": "พันจ่าโทธงไชย", "lname": "พงสุภา", "pos": "รองปลัดเทศบาล (นักบริหารงานท้องถิ่น)", "fullname": "พันจ่าโทธงไชย พงสุภา"}, {"id": 3, "type": "พนักงานเทศบาล", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวกันตา", "lname": "ธวาบุญรัศมี", "pos": "หัวหน้าสำนักปลัดเทศบาล (นักบริหารงานทั่วไป)", "fullname": "นางสาวกันตา ธวาบุญรัศมี"}, {"id": 4, "type": "พนักงานเทศบาล", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวต้นกัญญา", "lname": "รัตนาวดี", "pos": "นักทรัพยากรบุคคล", "fullname": "นางสาวต้นกัญญา รัตนาวดี"}, {"id": 5, "type": "พนักงานเทศบาล", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวอัยยรัศมิ์", "lname": "ฝนเทียม", "pos": "เจ้าพนักงานธุรการ", "fullname": "นางสาวอัยยรัศมิ์ ฝนเทียม"}, {"id": 6, "type": "พนักงานเทศบาล", "dept": "สำนักปลัดเทศบาล", "fname": "นางสาวพัณณิตา", "lname": "พานเมือง", "pos": "นักประชาสัมพันธ์", "fullname": "นางสาวพัณณิตา พานเมือง"}, {"id": 7, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางพิชาวีร์", "lname": "เอมดวง", "pos": "เจ้าพนักงานจัดเก็บรายได้", "fullname": "นางพิชาวีร์ เอมดวง"}, {"id": 8, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางอังคณา", "lname": "สมหมาย", "pos": "เจ้าพนักงานจัดเก็บรายได้", "fullname": "นางอังคณา สมหมาย"}, {"id": 9, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางกาญจนา", "lname": "ประสานศรี", "pos": "หัวหน้าฝ่ายการเงินและบัญชี", "fullname": "นางกาญจนา ประสานศรี"}, {"id": 10, "type": "พนักงานเทศบาล", "dept": "กองคลัง", "fname": "นางบุณณิศา", "lname": "คงประเสริฐ", "pos": "เจ้าพนักงานการเงินและบัญชี", "fullname": "นางบุณณิศา คงประเสริฐ"}];
+    const INITIAL_SCANS = [{"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "กันตา ธวาบุญรัศมี", "dtStr": "2026-10-14 08:22:49"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "กันตา ธวาบุญรัศมี", "dtStr": "2026-10-14 16:43:14"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "พัณณิตา พานเมือง", "dtStr": "2026-10-14 08:18:23"}, {"rawCat": "พนักงานเทศบาล/ลูกจ้างประจำ", "rawName": "พัณณิตา พานเมือง", "dtStr": "2026-10-14 16:58:20"}];
+    const ALIAS_MAP = {"นุชนาฏฤกษ์มงคล": "นุชนาฎฤกษ์มงคล", "ศิริลักษณ์สถิตย์เสถียร์": "ศิริลักษณ์สถิตย์เสถียร", "ประสิทธิ์หนูประเสริฐ": "ประสิทธิ์หนุประเสริฐ", "ปัณฑรีย์สุขศร": "ปัณฑารีย์สุขศร", "สุภารัตน์เดชาติวงศ์ณอยุ": "สุภารัตน์เดชาติวงศ์ณอยุธยา"};
+    const ALIAS_LIST = [{"rawName": "นุชนาฏ  ฤกษ์มงคล", "masterName": "นางสาวนุชนาฎ ฤกษ์มงคล"}, {"rawName": "ศิริลักษณ์ สถิตย์เสถียร์", "masterName": "นางสาวศิริลักษณ์ สถิตย์เสถียร"}];
+
+    // Global State
+    let masterRoster = [];
+    let rawScans = [];
+
+    // DOM Elements
+    const elements = {
+      selDate: document.getElementById('selDate'),
+      quickDateSelect: document.getElementById('QuickDateSelect'),
+      prevDate: document.getElementById('prevDate'),
+      lateTimeInput: document.getElementById('lateTimeInput'),
+      outTimeInput: document.getElementById('outTimeInput'),
+      filterType: document.getElementById('filterType'),
+      filterDept: document.getElementById('filterDept'),
+      filterStatus: document.getElementById('filterStatus'),
+      searchEmp: document.getElementById('searchEmp'),
+      filterRawDup: document.getElementById('filterRawDup'),
+      fileInputAppend: document.getElementById('fileInputAppend'),
+      fileInputReplace: document.getElementById('fileInputReplace'),
+      btnImportAppend: document.getElementById('btnImportAppend'),
+      btnImportReplace: document.getElementById('btnImportReplace'),
+      btnDownloadXlsm: document.getElementById('btnDownloadXlsm'),
+      btnExportXlsx: document.getElementById('btnExportXlsx'),
+      btnDemoNewPerson: document.getElementById('btnDemoNewPerson'),
+      btnDemoDup: document.getElementById('btnDemoDup'),
+      btnResetData: document.getElementById('btnResetData'),
+      toastBanner: document.getElementById('toastBanner'),
+      toastBox: document.getElementById('toastBox'),
+      toastText: document.getElementById('toastText'),
+      btnCloseToast: document.getElementById('btnCloseToast'),
+      dailyTableBody: document.getElementById('dailyTableBody'),
+      catSummaryBody: document.getElementById('catSummaryBody'),
+      deptSummaryBody: document.getElementById('deptSummaryBody'),
+      rawTableBody: document.getElementById('rawTableBody'),
+      rosterTableBody: document.getElementById('rosterTableBody'),
+      aliasTableBody: document.getElementById('aliasTableBody'),
+      kpiTotalEmp: document.getElementById('kpiTotalEmp'),
+      kpiAutoAdded: document.getElementById('kpiAutoAdded'),
+      kpiMorningIn: document.getElementById('kpiMorningIn'),
+      kpiOnTime: document.getElementById('kpiOnTime'),
+      kpiLate: document.getElementById('kpiLate'),
+      kpiEveningOut: document.getElementById('kpiEveningOut'),
+      kpiDupEmp: document.getElementById('kpiDupEmp'),
+      kpiMissing: document.getElementById('kpiMissing'),
+      dailyCountBadge: document.getElementById('dailyCountBadge'),
+      rawCountBadge: document.getElementById('rawCountBadge'),
+      rosterCountBadge: document.getElementById('rosterCountBadge'),
+      tabBtnDaily: document.getElementById('tabBtnDaily'),
+      tabBtnCat: document.getElementById('tabBtnCat'),
+      tabBtnRaw: document.getElementById('tabBtnRaw'),
+      tabBtnRoster: document.getElementById('tabBtnRoster'),
+      tabBtnExamples: document.getElementById('tabBtnExamples'),
+      viewDaily: document.getElementById('viewDaily'),
+      viewCat: document.getElementById('viewCat'),
+      viewRaw: document.getElementById('viewRaw'),
+      viewRoster: document.getElementById('viewRoster'),
+      viewExamples: document.getElementById('viewExamples'),
+      manualFullname: document.getElementById('manualFullname'),
+      manualType: document.getElementById('manualType'),
+      manualDept: document.getElementById('manualDept'),
+      manualPos: document.getElementById('manualPos'),
+      btnManualAddPerson: document.getElementById('btnManualAddPerson'),
+      btnDownloadAllExamplesXlsx: document.getElementById('btnDownloadAllExamplesXlsx')
+    };
+
+    // Initialize App & Persistent Storage
+    window.addEventListener('DOMContentLoaded', async () => {
+      setupTabNavigation();
+      setupEventListeners();
+      renderAliasTable();
+      await loadPersistentData();
     });
 
-    function showToast(text, isError = false) {
-      const toast = document.getElementById('toast');
-      toast.textContent = text;
-      toast.className = `p-3 rounded-xl text-sm font-medium border ${isError ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`;
-      toast.classList.remove('hidden');
-      setTimeout(() => toast.classList.add('hidden'), 4000);
-    }
+    // Storage Management (LocalStorage + Supabase)
+    async function loadPersistentData() {
+      // Load from LocalStorage
+      const storedRoster = localStorage.getItem(LOCAL_ROSTER_KEY);
+      const storedScans = localStorage.getItem(LOCAL_SCANS_KEY);
 
-    // --------------------------------------------------------
-    // MAIN RENDER CONTROLLER
-    // --------------------------------------------------------
-    function renderAll() {
-      updateDatePicker();
-      renderDailyTable();
-      renderRosterTable();
-      saveData();
-    }
+      masterRoster = storedRoster ? JSON.parse(storedRoster) : JSON.parse(JSON.stringify(INITIAL_ROSTER));
+      rawScans = storedScans ? JSON.parse(storedScans) : JSON.parse(JSON.stringify(INITIAL_SCANS));
 
-    function updateDatePicker() {
-      const datePicker = document.getElementById('datePicker');
-      const currentSel = datePicker.value;
-      const dates = Array.from(new Set(scans.map(s => s.date))).sort().reverse();
-      
-      datePicker.innerHTML = '';
-      if (dates.length === 0) {
-        datePicker.innerHTML = '<option value="">-- ยังไม่มีข้อมูลไฟล์สแกน --</option>';
-        return;
+      // Fetch from Supabase if connected
+      if (supabaseClient) {
+        try {
+          const { data: rosterDb } = await supabaseClient.from('roster').select('*');
+          if (rosterDb && rosterDb.length > 0) {
+            masterRoster = rosterDb.map(r => ({
+              id: r.id, type: r.type, dept: r.dept, fname: r.fname || r.fullname, lname: r.lname || '', pos: r.pos, fullname: r.fullname, autoAdded: r.auto_added || false
+            }));
+          }
+          const { data: scansDb } = await supabaseClient.from('scan_logs').select('*');
+          if (scansDb && scansDb.length > 0) {
+            rawScans = scansDb.map(s => ({ rawCat: s.raw_cat, rawName: s.raw_name, dtStr: s.dt_str }));
+          }
+        } catch (err) {
+          console.error('Supabase fetch error:', err);
+        }
       }
 
-      dates.forEach(d => {
-        const opt = document.createElement('option');
-        opt.value = d;
-        opt.textContent = `📅 วันที่ ${d} (${scans.filter(s => s.date === d).length} รายการ)`;
-        datePicker.appendChild(opt);
+      saveToLocalStorage();
+      refreshAll();
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem(LOCAL_ROSTER_KEY, JSON.stringify(masterRoster));
+      localStorage.setItem(LOCAL_SCANS_KEY, JSON.stringify(rawScans));
+    }
+
+    async function syncPersonToSupabase(p) {
+      if (!supabaseClient) return;
+      try {
+        await supabaseClient.from('roster').insert([{
+          id: p.id, type: p.type, dept: p.dept, fullname: p.fullname, pos: p.pos, auto_added: p.autoAdded || false
+        }]);
+      } catch (e) { console.error('Supabase insert error:', e); }
+    }
+
+    async function syncScansToSupabase(scans) {
+      if (!supabaseClient || !scans || scans.length === 0) return;
+      try {
+        await supabaseClient.from('scan_logs').insert(scans.map(s => ({ raw_cat: s.rawCat, raw_name: s.rawName, dt_str: s.dtStr })));
+      } catch (e) { console.error('Supabase scan sync error:', e); }
+    }
+
+    function showToast(message, type = 'info') {
+      elements.toastText.textContent = message;
+      elements.toastBanner.classList.remove('hidden');
+      elements.toastBox.className = 'rounded-lg px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm border ';
+      if (type === 'success') elements.toastBox.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900');
+      else if (type === 'warn') elements.toastBox.classList.add('bg-amber-50', 'border-amber-300', 'text-amber-900');
+      else if (type === 'error') elements.toastBox.classList.add('bg-rose-50', 'border-rose-300', 'text-rose-900');
+      else elements.toastBox.classList.add('bg-blue-50', 'border-blue-300', 'text-blue-900');
+    }
+
+    elements.btnCloseToast.addEventListener('click', () => elements.toastBanner.classList.add('hidden'));
+
+    function cleanName(str) {
+      if (!str) return '';
+      return String(str).replace(/^(นาย|นางสาว|นาง|น\.ส\.|พ\.จ\.อ\.|พ\.จ\.ท\.|จ\.ส\.อ\.|ด\.ต\.|พันจ่าเอก|พันจ่าโท)/g, '').replace(/\s+/g, '').trim();
+    }
+
+    function setupTabNavigation() {
+      const tabs = [
+        { btn: elements.tabBtnDaily, view: elements.viewDaily },
+        { btn: elements.tabBtnCat, view: elements.viewCat },
+        { btn: elements.tabBtnRaw, view: elements.viewRaw },
+        { btn: elements.tabBtnRoster, view: elements.viewRoster },
+        { btn: elements.tabBtnExamples, view: elements.viewExamples }
+      ];
+
+      tabs.forEach(tab => {
+        tab.btn.addEventListener('click', () => {
+          tabs.forEach(t => {
+            t.view.classList.add('hidden');
+            t.btn.className = t.btn === elements.tabBtnExamples
+              ? 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 border border-amber-500 shadow-sm'
+              : 'px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300';
+          });
+          tab.view.classList.remove('hidden');
+          tab.btn.className = tab.btn === elements.tabBtnExamples
+            ? 'px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-slate-950 shadow-md border border-amber-600'
+            : 'px-4 py-2 rounded-lg text-sm font-bold bg-[#1B365D] text-white shadow-sm';
+        });
+      });
+    }
+
+    function setupEventListeners() {
+      ['change', 'input'].forEach(evt => {
+        elements.selDate.addEventListener(evt, refreshAll);
+        elements.prevDate.addEventListener(evt, refreshAll);
+        elements.lateTimeInput.addEventListener(evt, refreshAll);
+        elements.outTimeInput.addEventListener(evt, refreshAll);
+        elements.filterType.addEventListener(evt, refreshAll);
+        elements.filterDept.addEventListener(evt, refreshAll);
+        elements.filterStatus.addEventListener(evt, refreshAll);
+        elements.searchEmp.addEventListener(evt, refreshAll);
+        elements.filterRawDup.addEventListener(evt, renderRawTableOnly);
       });
 
-      if (currentSel && dates.includes(currentSel)) {
-        datePicker.value = currentSel;
-      }
+      elements.quickDateSelect.addEventListener('change', (e) => {
+        if (e.target.value) {
+          elements.selDate.value = e.target.value;
+          refreshAll();
+        }
+      });
+
+      elements.btnManualAddPerson.addEventListener('click', handleManualAddPerson);
+      elements.btnImportAppend.addEventListener('click', () => elements.fileInputAppend.click());
+      elements.btnImportReplace.addEventListener('click', () => elements.fileInputReplace.click());
+      elements.fileInputAppend.addEventListener('change', (e) => handleFileUpload(e, false));
+      elements.fileInputReplace.addEventListener('change', (e) => handleFileUpload(e, true));
+      elements.btnDemoNewPerson.addEventListener('click', runDemoNewPerson);
+      elements.btnDemoDup.addEventListener('click', runDemoDup);
+      elements.btnResetData.addEventListener('click', resetAllData);
+      elements.btnExportXlsx.addEventListener('click', exportProcessedResultsXlsx);
+      elements.btnDownloadXlsm.addEventListener('click', downloadSampleXlsx);
+      elements.btnDownloadAllExamplesXlsx.addEventListener('click', downloadSampleXlsx);
+
+      document.querySelectorAll('.btn-run-example').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          runExamplePreset(e.currentTarget.getAttribute('data-ex-id'));
+        });
+      });
     }
 
-    // --------------------------------------------------------
-    // TAB 1: DAILY SCAN SUMMARY
-    // --------------------------------------------------------
-    function renderDailyTable() {
-      const selectedDate = document.getElementById('datePicker').value;
-      const lateTime = document.getElementById('lateTime').value || "08:30";
-      const search = document.getElementById('searchInput').value.trim().toLowerCase();
-      const tbody = document.getElementById('dailyTbody');
+    function updateDateDropdown() {
+      const dates = new Set();
+      rawScans.forEach(s => {
+        if (s.dtStr && s.dtStr.includes(' ')) dates.add(s.dtStr.split(' ')[0]);
+      });
+      const sortedDates = Array.from(dates).sort().reverse();
+      elements.quickDateSelect.innerHTML = '<option value="">-- เลือกวันที่ที่มีข้อมูลสแกน --</option>';
+      sortedDates.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = `📅 ${d} (${rawScans.filter(s => s.dtStr.startsWith(d)).length} สแกน)`;
+        if (d === elements.selDate.value) opt.selected = true;
+        elements.quickDateSelect.appendChild(opt);
+      });
+    }
 
-      document.getElementById('countDaily').textContent = roster.length;
+    function refreshAll() {
+      updateDateDropdown();
+      const processed = processScanData();
+      renderKPIs(processed);
+      renderDailyTable(processed);
+      renderCatSummary(processed);
+      renderDeptSummary(processed);
+      renderRawTableOnly();
+      renderRosterTable();
+      saveToLocalStorage();
+    }
 
-      if (!selectedDate) {
-        tbody.innerHTML = '<tr><td colspan="9" class="p-8 text-center text-slate-400">ยังไม่มีข้อมูล กรุณากดนำเข้าไฟล์สแกนนิ้ว (.xlsx / .csv)</td></tr>';
-        return;
+    function processScanData() {
+      const targetDate = elements.selDate.value;
+      const previousDate = elements.prevDate.value;
+      const lateTimeThreshold = elements.lateTimeInput.value || "08:30";
+      const outTimeThreshold = elements.outTimeInput.value || "16:30";
+
+      const empMap = {};
+      masterRoster.forEach(emp => {
+        empMap[emp.id] = { ...emp, morningScans: [], eveningScans: [], prevEveningScans: [] };
+      });
+
+      rawScans.forEach(scan => {
+        if (!scan.dtStr || !scan.dtStr.includes(' ')) return;
+        const [sDate, sTime] = scan.dtStr.split(' ');
+        const masterEmp = findMatchingMasterPerson(scan.rawName);
+        if (masterEmp && empMap[masterEmp.id]) {
+          const target = empMap[masterEmp.id];
+          if (sDate === targetDate) {
+            if (sTime < "12:00") target.morningScans.push(sTime);
+            else target.eveningScans.push(sTime);
+          } else if (sDate === previousDate) {
+            if (sTime >= "12:00") target.prevEveningScans.push(sTime);
+          }
+        }
+      });
+
+      return Object.values(empMap).map(emp => {
+        emp.morningScans.sort();
+        emp.eveningScans.sort();
+        emp.prevEveningScans.sort();
+
+        const firstIn = emp.morningScans[0] || '';
+        const lastOut = emp.eveningScans[emp.eveningScans.length - 1] || '';
+        const prevOut = emp.prevEveningScans[emp.prevEveningScans.length - 1] || '';
+        const morningCount = emp.morningScans.length;
+        const eveningCount = emp.eveningScans.length;
+        const isDuplicate = morningCount > 1 || eveningCount > 1;
+
+        let statusIn = firstIn ? (firstIn <= lateTimeThreshold ? 'ปกติ' : 'มาสาย') : '-';
+        let statusOut = lastOut ? (lastOut >= outTimeThreshold ? 'ปกติ' : 'ออกก่อนเวลา') : '-';
+        let overallSummary = 'ไม่พบข้อมูลสแกน';
+
+        if (firstIn && lastOut) overallSummary = (statusIn === 'มาสาย' || statusOut === 'ออกก่อนเวลา') ? 'มาสาย / ออกก่อน' : 'ปกติครบถ้วน';
+        else if (firstIn) overallSummary = statusIn === 'มาสาย' ? 'มาสาย (ไม่สแกนออก)' : 'เข้าปกติ (ไม่สแกนออก)';
+        else if (lastOut) overallSummary = 'สแกนออกเย็นอย่างเดียว';
+
+        return {
+          ...emp, firstIn, lastOut, prevOut, morningCount, eveningCount, isDuplicate, statusIn, statusOut, overallSummary
+        };
+      });
+    }
+
+    function findMatchingMasterPerson(rawName) {
+      const cleanedRaw = cleanName(rawName);
+      if (!cleanedRaw) return null;
+
+      let match = masterRoster.find(r => cleanName(r.fullname) === cleanedRaw || cleanName(r.fname + r.lname) === cleanedRaw);
+      if (match) return match;
+
+      const aliasMasterKey = ALIAS_MAP[cleanedRaw];
+      if (aliasMasterKey) {
+        match = masterRoster.find(r => cleanName(r.fullname) === aliasMasterKey || cleanName(r.fname + r.lname) === aliasMasterKey);
+        if (match) return match;
       }
 
-      // Filter scans for selected date
-      const dayScans = scans.filter(s => s.date === selectedDate);
+      return masterRoster.find(r => cleanName(r.fullname).includes(cleanedRaw) || cleanedRaw.includes(cleanName(r.fullname))) || null;
+    }
+
+    function autoAddPersonFromScan(rawName, rawCat = "พนักงานจ้างทั่วไป") {
+      const trimmedName = rawName.trim();
+      const existing = findMatchingMasterPerson(trimmedName);
+      if (existing) return existing;
+
+      let cleaned = trimmedName.replace(/^(นาย|นางสาว|นาง|น\.ส\.)\s*/, '');
+      const parts = cleaned.split(/\s+/);
+      const fname = parts[0] || cleaned;
+      const lname = parts.slice(1).join(' ') || '';
+
+      let inferredType = "พนักงานจ้างทั่วไป";
+      if (rawCat.includes("เทศบาล")) inferredType = "พนักงานเทศบาล";
+      else if (rawCat.includes("ภารกิจ")) inferredType = "พนักงานจ้างตามภารกิจ";
+      else if (rawCat.includes("ประจำ")) inferredType = "ลูกจ้างประจำ";
+
+      const newId = masterRoster.length > 0 ? Math.max(...masterRoster.map(r => r.id)) + 1 : 1;
+      const newPerson = {
+        id: newId, type: inferredType, dept: "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)", fname, lname, pos: "พนักงาน (เพิ่มให้อัตโนมัติ)", fullname: trimmedName, autoAdded: true
+      };
+
+      masterRoster.push(newPerson);
+      saveToLocalStorage();
+      syncPersonToSupabase(newPerson);
+      return newPerson;
+    }
+
+    function renderKPIs(list) {
+      elements.kpiTotalEmp.textContent = list.length;
+      elements.kpiAutoAdded.textContent = list.filter(e => e.autoAdded).length;
+      elements.kpiMorningIn.textContent = list.filter(e => e.firstIn).length;
+      elements.kpiOnTime.textContent = list.filter(e => e.firstIn && e.statusIn === 'ปกติ').length;
+      elements.kpiLate.textContent = list.filter(e => e.statusIn === 'มาสาย').length;
+      elements.kpiEveningOut.textContent = list.filter(e => e.lastOut).length;
+      elements.kpiDupEmp.textContent = list.filter(e => e.isDuplicate).length;
+      elements.kpiMissing.textContent = list.filter(e => !e.firstIn && !e.lastOut).length;
+
+      elements.dailyCountBadge.textContent = list.length;
+      elements.rawCountBadge.textContent = rawScans.length;
+      elements.rosterCountBadge.textContent = list.length;
+    }
+
+    function renderDailyTable(list) {
+      const fType = elements.filterType.value;
+      const fDept = elements.filterDept.value;
+      const fStatus = elements.filterStatus.value;
+      const search = elements.searchEmp.value.trim().toLowerCase();
+
+      let filtered = list.filter(emp => {
+        if (fType !== 'ALL' && emp.type !== fType) return false;
+        if (fDept !== 'ALL' && emp.dept !== fDept) return false;
+        if (fStatus === 'AUTO_ADDED' && !emp.autoAdded) return false;
+        if (fStatus === 'SCANNED' && !emp.firstIn && !emp.lastOut) return false;
+        if (fStatus === 'DUP' && !emp.isDuplicate) return false;
+        if (fStatus === 'LATE' && emp.statusIn !== 'มาสาย') return false;
+        if (fStatus === 'MISSING' && (emp.firstIn || emp.lastOut)) return false;
+        if (search && !emp.fullname.toLowerCase().includes(search) && !emp.pos.toLowerCase().includes(search)) return false;
+        return true;
+      });
 
       let html = '';
-      roster.forEach((emp, index) => {
-        if (search && !emp.fullname.toLowerCase().includes(search) && !emp.pos.toLowerCase().includes(search)) {
-          return;
-        }
-
-        // Find employee scans
-        const empScans = dayScans.filter(s => cleanName(s.name) === cleanName(emp.fullname));
-        const times = empScans.map(s => s.time).sort();
-
-        const morning = times.find(t => t < "12:00") || '';
-        const evening = times.filter(t => t >= "12:00").pop() || '';
-
-        let inStatus = '-';
-        if (morning) inStatus = morning <= lateTime ? 'ปกติ' : 'มาสาย';
-
-        let outStatus = '-';
-        if (evening) outStatus = evening >= '16:30' ? 'ปกติ' : 'ออกก่อนเวลา';
-
-        let summary = 'ขาดสแกน';
-        if (morning && evening) summary = inStatus === 'มาสาย' ? 'มาสาย' : 'ปกติ';
-        else if (morning) summary = inStatus === 'มาสาย' ? 'มาสาย (ไม่สแกนออก)' : 'สแกนเข้าอย่างเดียว';
-        else if (evening) summary = 'สแกนออกอย่างเดียว';
-
-        const inClass = inStatus === 'มาสาย' ? 'bg-amber-100 text-amber-900 font-bold' : (inStatus === 'ปกติ' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-400');
-        const outClass = outStatus === 'ออกก่อนเวลา' ? 'bg-amber-100 text-amber-900 font-bold' : (outStatus === 'ปกติ' ? 'bg-blue-100 text-blue-800' : 'text-slate-400');
+      filtered.forEach((emp, idx) => {
+        const inClass = emp.statusIn === 'มาสาย' ? 'bg-amber-100 text-amber-900 font-bold' : (emp.statusIn === 'ปกติ' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-400');
+        const outClass = emp.statusOut === 'ออกก่อนเวลา' ? 'bg-amber-100 text-amber-900 font-bold' : (emp.statusOut === 'ปกติ' ? 'bg-blue-50 text-blue-800' : 'text-slate-400');
+        let dupBadge = emp.isDuplicate ? `<span class="bg-orange-500 text-white font-bold px-2 py-0.5 rounded text-[11px]">⚠️ สแกนซ้ำ (${emp.morningCount}/${emp.eveningCount})</span>` : '-';
 
         html += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-3 text-center text-slate-400 font-mono">${index + 1}</td>
-            <td class="p-3 text-slate-600">${emp.dept}</td>
-            <td class="p-3 font-semibold text-slate-900">${emp.fullname}</td>
-            <td class="p-3 text-slate-600">${emp.pos}</td>
-            <td class="p-3 text-center font-mono font-bold text-slate-800">${morning || '-'}</td>
-            <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] ${inClass}">${inStatus}</span></td>
-            <td class="p-3 text-center font-mono font-bold text-slate-800">${evening || '-'}</td>
-            <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] ${outClass}">${outStatus}</span></td>
-            <td class="p-3 text-center font-semibold text-slate-700">${summary}</td>
+          <tr class="hover:bg-slate-50 ${emp.autoAdded ? 'bg-purple-50/40' : ''}">
+            <td class="p-2 text-center text-slate-500 font-mono">${idx + 1}</td>
+            <td class="p-2 font-medium">${emp.type}</td>
+            <td class="p-2 text-slate-700">${emp.dept}</td>
+            <td class="p-2 font-semibold text-slate-900">${emp.fullname} ${emp.autoAdded ? '✨' : ''}</td>
+            <td class="p-2 text-slate-600">${emp.pos}</td>
+            <td class="p-2 text-center font-mono font-bold">${emp.firstIn || '-'}</td>
+            <td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-[11px] ${inClass}">${emp.statusIn}</span></td>
+            <td class="p-2 text-center font-mono font-bold">${emp.lastOut || '-'}</td>
+            <td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-[11px] ${outClass}">${emp.statusOut}</span></td>
+            <td class="p-2 text-center font-mono">${emp.morningCount} / ${emp.eveningCount}</td>
+            <td class="p-2 text-center">${dupBadge}</td>
+            <td class="p-2 text-center font-semibold text-slate-800">${emp.overallSummary}</td>
+            <td class="p-2 text-center font-mono text-slate-600 bg-slate-50">${emp.prevOut || '-'}</td>
           </tr>
         `;
       });
-
-      tbody.innerHTML = html || '<tr><td colspan="9" class="p-6 text-center text-slate-400">ไม่พบข้อมูลที่ค้นหา</td></tr>';
+      elements.dailyTableBody.innerHTML = html || '<tr><td colspan="13" class="p-8 text-center text-slate-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr>';
     }
 
-    // --------------------------------------------------------
-    // TAB 2: ROSTER & DELETE PERSON
-    // --------------------------------------------------------
-    function renderRosterTable() {
-      const tbody = document.getElementById('rosterTbody');
-      document.getElementById('countRoster').textContent = roster.length;
-
+    function renderCatSummary(list) {
+      const types = ["พนักงานเทศบาล", "ลูกจ้างประจำ", "พนักงานจ้างตามภารกิจ", "พนักงานจ้างทั่วไป"];
       let html = '';
-      roster.forEach((emp, index) => {
+      types.forEach(t => {
+        const group = list.filter(e => e.type === t);
+        html += `<tr class="hover:bg-slate-50"><td class="p-2 font-bold">${t}</td><td class="p-2 text-right">${group.length}</td><td class="p-2 text-right">${group.filter(e=>e.firstIn).length}</td><td class="p-2 text-right">${group.filter(e=>e.statusIn==='ปกติ').length}</td><td class="p-2 text-right">${group.filter(e=>e.statusIn==='มาสาย').length}</td><td class="p-2 text-right">${group.filter(e=>e.lastOut).length}</td><td class="p-2 text-right">${group.filter(e=>e.isDuplicate).length}</td><td class="p-2 text-right">${group.filter(e=>!e.firstIn&&!e.lastOut).length}</td></tr>`;
+      });
+      elements.catSummaryBody.innerHTML = html;
+    }
+
+    function renderDeptSummary(list) {
+      const depts = ["ผู้บริหารท้องถิ่น", "สำนักปลัดเทศบาล", "กองคลัง", "กองช่าง", "กองสาธารณสุขและสิ่งแวดล้อม", "กองการศึกษา", "กองสวัสดิการสังคม", "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)"];
+      let html = '';
+      depts.forEach(d => {
+        const group = list.filter(e => e.dept === d);
+        if (group.length === 0 && d.includes('เพิ่มอัตโนมัติ')) return;
+        html += `<tr class="hover:bg-slate-50"><td class="p-2 font-bold">${d}</td><td class="p-2 text-right">${group.length}</td><td class="p-2 text-right">${group.filter(e=>e.firstIn).length}</td><td class="p-2 text-right">${group.filter(e=>e.statusIn==='ปกติ').length}</td><td class="p-2 text-right">${group.filter(e=>e.statusIn==='มาสาย').length}</td><td class="p-2 text-right">${group.filter(e=>e.lastOut).length}</td><td class="p-2 text-right">${group.filter(e=>e.isDuplicate).length}</td><td class="p-2 text-right">${group.filter(e=>!e.firstIn&&!e.lastOut).length}</td></tr>`;
+      });
+      elements.deptSummaryBody.innerHTML = html;
+    }
+
+    function renderRawTableOnly() {
+      let html = '';
+      rawScans.forEach((s, idx) => {
+        const [d, t] = (s.dtStr || ' ').split(' ');
+        html += `<tr class="hover:bg-slate-50"><td class="p-2 text-center font-mono">${idx+1}</td><td class="p-2">${s.rawCat}</td><td class="p-2 font-semibold">${s.rawName}</td><td class="p-2 font-mono">${s.dtStr}</td><td class="p-2 font-mono">${d}</td><td class="p-2 font-mono">${t}</td><td class="p-2">${t<'12:00'?'เช้า':'เย็น'}</td><td class="p-2 text-center">-</td><td class="p-2 text-center">-</td><td class="p-2 text-center font-mono">1</td><td class="p-2 text-center"><span class="text-emerald-700 font-medium">ปกติ</span></td></tr>`;
+      });
+      elements.rawTableBody.innerHTML = html || '<tr><td colspan="11" class="p-6 text-center text-slate-400">ไม่มีข้อมูลสแกน</td></tr>';
+    }
+
+    // Render Master Roster with Delete Button
+    function renderRosterTable() {
+      let html = '';
+      masterRoster.forEach((r, idx) => {
         html += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-3 text-center text-slate-400 font-mono">${index + 1}</td>
-            <td class="p-3 font-semibold text-slate-900">${emp.fullname}</td>
-            <td class="p-3 text-slate-600">${emp.dept}</td>
-            <td class="p-3 text-slate-600">${emp.pos}</td>
-            <td class="p-3 text-center">
-              <button onclick="deletePerson(${emp.id})" class="bg-rose-100 hover:bg-rose-600 hover:text-white text-rose-700 font-semibold px-2.5 py-1 rounded-lg text-xs transition">
-                🗑️ ลบออก
+          <tr class="hover:bg-slate-50 ${r.autoAdded ? 'bg-purple-50/60' : ''}">
+            <td class="p-2 text-center font-mono">${idx + 1}</td>
+            <td class="p-2">
+              <select onchange="updateRosterField(${r.id}, 'type', this.value)" class="bg-white border rounded px-1.5 py-1 text-xs">
+                <option value="พนักงานเทศบาล" ${r.type === 'พนักงานเทศบาล' ? 'selected' : ''}>พนักงานเทศบาล</option>
+                <option value="ลูกจ้างประจำ" ${r.type === 'ลูกจ้างประจำ' ? 'selected' : ''}>ลูกจ้างประจำ</option>
+                <option value="พนักงานจ้างตามภารกิจ" ${r.type === 'พนักงานจ้างตามภารกิจ' ? 'selected' : ''}>พนักงานจ้างตามภารกิจ</option>
+                <option value="พนักงานจ้างทั่วไป" ${r.type === 'พนักงานจนักงานทั่วไป' || r.type === 'พนักงานจ้างทั่วไป' ? 'selected' : ''}>พนักงานจ้างทั่วไป</option>
+              </select>
+            </td>
+            <td class="p-2 font-medium">${r.dept}</td>
+            <td class="p-2 font-semibold text-slate-900">${r.fullname}</td>
+            <td class="p-2"><input type="text" value="${r.pos}" onchange="updateRosterField(${r.id}, 'pos', this.value)" class="bg-white border rounded px-2 py-1 text-xs w-full" /></td>
+            <td class="p-2 text-center">${r.autoAdded ? '<span class="bg-purple-200 text-purple-900 font-bold px-2 py-0.5 rounded text-[11px]">✨ เพิ่มอัตโนมัติ</span>' : '<span class="text-slate-400 text-[11px]">ทะเบียนหลัก</span>'}</td>
+            <td class="p-2 text-center">
+              <button onclick="deletePersonFromRoster(${r.id})" class="bg-rose-100 hover:bg-rose-600 hover:text-white text-rose-700 font-bold px-2.5 py-1 rounded text-xs transition">
+                🗑️ ลบ
               </button>
             </td>
           </tr>
         `;
       });
-      tbody.innerHTML = html || '<tr><td colspan="5" class="p-6 text-center text-slate-400">ไม่มีรายชื่อในระบบ</td></tr>';
+      elements.rosterTableBody.innerHTML = html;
     }
 
-    function addPerson() {
-      const name = document.getElementById('addName').value.trim();
-      const dept = document.getElementById('addDept').value.trim() || 'ไม่ระบุสังกัด';
-      const pos = document.getElementById('addPos').value.trim() || 'พนักงาน';
-
-      if (!name) {
-        showToast('กรุณากรอกชื่อ-นามสกุล', true);
-        return;
-      }
-
-      const newPerson = {
-        id: Date.now(),
-        fullname: name,
-        dept: dept,
-        pos: pos
-      };
-
-      roster.push(newPerson);
-      document.getElementById('addName').value = '';
-      showToast(`เพิ่มคุณ "${name}" เข้าทะเบียนเรียบร้อย`);
-      renderAll();
-    }
-
-    // Delete Person Function
-    function deletePerson(id) {
-      const target = roster.find(r => r.id === id);
+    // Delete Person Action
+    window.deletePersonFromRoster = function(id) {
+      const target = masterRoster.find(r => r.id === id);
       if (!target) return;
 
       if (confirm(`คุณต้องการลบคุณ "${target.fullname}" ออกจากทะเบียนใช่หรือไม่?`)) {
-        roster = roster.filter(r => r.id !== id);
-        showToast(`ลบคุณ "${target.fullname}" เรียบร้อยแล้ว`);
-        renderAll();
+        masterRoster = masterRoster.filter(r => r.id !== id);
+        saveToLocalStorage();
+        refreshAll();
+        showToast(`ลบรายชื่อ "${target.fullname}" ออกจากทะเบียนเรียบร้อยแล้ว`, 'success');
       }
+    };
+
+    window.updateRosterField = function(id, field, value) {
+      const emp = masterRoster.find(r => r.id === id);
+      if (emp) {
+        emp[field] = value;
+        saveToLocalStorage();
+        refreshAll();
+        showToast(`แก้ไขข้อมูลของ "${emp.fullname}" เรียบร้อยแล้ว`, 'success');
+      }
+    };
+
+    function renderAliasTable() {
+      let html = '';
+      ALIAS_LIST.forEach(item => {
+        html += `<tr class="hover:bg-slate-50"><td class="p-2 font-mono">${item.rawName}</td><td class="p-2 font-semibold text-blue-900">${item.masterName}</td></tr>`;
+      });
+      elements.aliasTableBody.innerHTML = html;
     }
 
-    // --------------------------------------------------------
-    // FILE IMPORT & DATA PERSISTENCE
-    // --------------------------------------------------------
-    function handleFileUpload(e) {
-      const file = e.target.files[0];
+    function handleManualAddPerson() {
+      const name = elements.manualFullname.value.trim();
+      if (!name) return showToast("กรุณากรอกชื่อ-นามสกุล บุคลากร", "warn");
+      const existing = findMatchingMasterPerson(name);
+      if (existing) return showToast(`รายชื่อ "${name}" มีในทะเบียนแล้ว`, "warn");
+
+      const newId = masterRoster.length > 0 ? Math.max(...masterRoster.map(r => r.id)) + 1 : 1;
+      const newPerson = {
+        id: newId, type: elements.manualType.value, dept: elements.manualDept.value, fname: name, lname: '', pos: elements.manualPos.value.trim() || 'พนักงาน', fullname: name, autoAdded: false
+      };
+      masterRoster.push(newPerson);
+      saveToLocalStorage();
+      syncPersonToSupabase(newPerson);
+      elements.manualFullname.value = '';
+      elements.manualPos.value = '';
+      refreshAll();
+      showToast(`เพิ่มคุณ "${name}" เข้าทะเบียนเรียบร้อยแล้ว`, "success");
+    }
+
+    function handleFileUpload(event, isReplaceMode) {
+      const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = function(evt) {
+      reader.onload = function(e) {
         try {
-          const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+          const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+          if (rows.length < 2) return showToast("ไม่พบข้อมูลสแกนในไฟล์ Excel", "error");
 
-          let addedCount = 0;
-          let newPersonAdded = 0;
-
+          const newScans = [];
           for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             if (!row || row.length < 2) continue;
-
             let name = String(row[1] || row[0]).trim();
             let dtStr = String(row[2] || row[1]).trim();
-
-            if (!name || !dtStr) continue;
-
-            // Fix Buddhist year & format
-            dtStr = dtStr.replace('/2569', '/2026').replace('-2569', '-2026');
-            let [d, t] = dtStr.split(' ');
-            if (d && d.includes('/')) {
-              const parts = d.split('/');
-              if (parts.length === 3) d = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-            }
-
-            if (!d || !t) continue;
-
-            // Auto add new person to roster if missing
-            if (!roster.some(r => cleanName(r.fullname) === cleanName(name))) {
-              roster.push({
-                id: Date.now() + Math.random(),
-                fullname: name,
-                dept: 'เพิ่มให้อัตโนมัติ',
-                pos: 'พนักงาน'
-              });
-              newPersonAdded++;
-            }
-
-            // Append scan record
-            scans.push({ date: d, time: t.substring(0,5), name: name });
-            addedCount++;
+            if (!findMatchingMasterPerson(name)) autoAddPersonFromScan(name);
+            newScans.push({ rawCat: "ไฟล์แนบ", rawName: name, dtStr });
           }
 
-          renderAll();
-          showToast(`นำเข้าสำเร็จ ${addedCount} รายการ ${newPersonAdded > 0 ? `(พบคนใหม่เพิ่มเข้าทะเบียน ${newPersonAdded} คน)` : ''}`);
+          if (isReplaceMode) rawScans = newScans;
+          else rawScans = rawScans.concat(newScans);
 
+          saveToLocalStorage();
+          syncScansToSupabase(newScans);
+          refreshAll();
+          showToast(`นำเข้าและบันทึกไฟล์เรียบร้อย (${newScans.length} รายการ)`, "success");
         } catch (err) {
-          showToast('เกิดข้อผิดพลาดในการอ่านไฟล์', true);
+          showToast("อ่านไฟล์ Excel ล้มเหลว กรุณาตรวจสอบรูปแบบไฟล์", "error");
         }
       };
       reader.readAsArrayBuffer(file);
-      e.target.value = '';
     }
 
-    function cleanName(str) {
-      if (!str) return '';
-      return String(str).replace(/^(นาย|นางสาว|นาง|น\.ส\.)\s*/, '').replace(/\s+/g, '').trim();
+    function runDemoNewPerson() {
+      autoAddPersonFromScan("นางสาวกมลชนก รุ่งเรืองกิจ", "พนักงานจ้างตามภารกิจ");
+      rawScans.push({ rawCat: "พนักงานจ้างตามภารกิจ", rawName: "นางสาวกมลชนก รุ่งเรืองกิจ", dtStr: "2026-10-16 07:50:12" });
+      saveToLocalStorage();
+      elements.selDate.value = "2026-10-16";
+      refreshAll();
+      showToast("✨ จำลองแนบไฟล์สแกนที่มีคนใหม่และบันทึกข้อมูลเรียบร้อย", "success");
     }
 
-    function switchTab(tabIndex) {
-      const t1 = document.getElementById('tab1');
-      const t2 = document.getElementById('tab2');
-      const b1 = document.getElementById('tab1Btn');
-      const b2 = document.getElementById('tab2Btn');
+    function runDemoDup() {
+      rawScans.push({ rawCat: "พนักงานเทศบาล", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: `${elements.selDate.value} 08:05:00` });
+      saveToLocalStorage();
+      refreshAll();
+      showToast("⚠️ บันทึกจำลองสแกนซ้ำเรียบร้อยแล้ว", "warn");
+    }
 
-      if (tabIndex === 1) {
-        t1.classList.remove('hidden');
-        t2.classList.add('hidden');
-        b1.className = 'py-2 px-4 font-bold text-sm border-b-2 border-[#1B365D] text-[#1B365D]';
-        b2.className = 'py-2 px-4 font-semibold text-sm text-slate-500';
-      } else {
-        t1.classList.add('hidden');
-        t2.classList.remove('hidden');
-        b2.className = 'py-2 px-4 font-bold text-sm border-b-2 border-[#1B365D] text-[#1B365D]';
-        b1.className = 'py-2 px-4 font-semibold text-sm text-slate-500';
+    function runExamplePreset(exId) {
+      if (exId === "1") {
+        elements.selDate.value = "2026-10-15";
+        rawScans = [
+          { rawCat: "พนักงานเทศบาล", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: "2026-10-15 08:12:10" },
+          { rawCat: "พนักงานเทศบาล", rawName: "พันจ่าเอกสยาม แพทยารักษ์", dtStr: "2026-10-15 16:40:00" }
+        ];
+      } else if (exId === "2") {
+        runDemoNewPerson();
+        return;
       }
+      refreshAll();
+      showToast("🚀 โหลดจำลองข้อมูลสำเร็จ", "success");
     }
 
-    function clearAllData() {
-      if (confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลประวัติไฟล์สแกนทั้งหมด?')) {
-        scans = [];
-        localStorage.removeItem('app_scans');
-        renderAll();
-        showToast('ล้างข้อมูลเรียบร้อยแล้ว');
-      }
+    function resetAllData() {
+      localStorage.removeItem(LOCAL_ROSTER_KEY);
+      localStorage.removeItem(LOCAL_SCANS_KEY);
+      masterRoster = JSON.parse(JSON.stringify(INITIAL_ROSTER));
+      rawScans = JSON.parse(JSON.stringify(INITIAL_SCANS));
+      elements.selDate.value = "2026-10-14";
+      saveToLocalStorage();
+      refreshAll();
+      showToast("↺ คืนค่าข้อมูลตั้งต้นเรียบร้อยแล้ว", "info");
     }
 
-    function exportExcel() {
-      const selectedDate = document.getElementById('datePicker').value;
-      if (!selectedDate) return showToast('ไม่มีข้อมูลสำหรับส่งออก', true);
-
-      const dayScans = scans.filter(s => s.date === selectedDate);
-      const rows = roster.map((r, i) => {
-        const empScans = dayScans.filter(s => cleanName(s.name) === cleanName(r.fullname)).map(s => s.time).sort();
-        const morning = empScans.find(t => t < "12:00") || '-';
-        const evening = empScans.filter(t => t >= "12:00").pop() || '-';
-        return {
-          "ลำดับ": i + 1,
-          "ชื่อ-นามสกุล": r.fullname,
-          "สังกัด": r.dept,
-          "ตำแหน่ง": r.pos,
-          "เข้าเช้า": morning,
-          "ออกเย็น": evening
-        };
-      });
-
-      const ws = XLSX.utils.json_to_sheet(rows);
+    function exportProcessedResultsXlsx() {
+      const processed = processScanData();
+      const ws = XLSX.utils.json_to_sheet(processed.map((emp, i) => ({
+        "ลำดับ": i + 1, "ประเภทบุคลากร": emp.type, "สังกัด/กอง": emp.dept, "ชื่อ-นามสกุล": emp.fullname, "ตำแหน่ง": emp.pos, "เวลาเข้า (เช้า)": emp.firstIn || '-', "สถานะเข้าเช้า": emp.statusIn, "เวลาออก (เย็น)": emp.lastOut || '-', "สถานะออกเย็น": emp.statusOut, "สรุปผล": emp.overallSummary
+      })));
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "สรุปผล");
-      XLSX.writeFile(wb, `รายงานสแกนนิ้ว_${selectedDate}.xlsx`);
+      XLSX.utils.book_append_sheet(wb, ws, "ผลตรวจ");
+      XLSX.writeFile(wb, `รายงานผลตรวจ_${elements.selDate.value}.xlsx`);
+    }
+
+    function downloadSampleXlsx() {
+      const ws = XLSX.utils.json_to_sheet([{ "ตำแหน่ง": "พนักงานเทศบาล", "ชื่อ-สกุล": "พันจ่าเอกสยาม แพทยารักษ์", "วัน/เวลาสแกน": "2026-10-15 08:12:10" }]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "ตัวอย่าง");
+      XLSX.writeFile(wb, "ตัวอย่างไฟล์สแกนนิ้ว.xlsx");
     }
   </script>
 </body>
