@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ระบบลงเวลาทำงาน & จัดการทะเบียนบุคลากร (Supabase Connected)</title>
+  <title>ระบบตรวจสอบเวลาเข้า-ออกงาน และจัดการทะเบียนบุคลากร</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Supabase JS Client Library -->
+  <!-- Supabase Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -20,35 +20,43 @@
     <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       <div>
         <div class="flex flex-wrap items-center gap-2">
-          <span class="bg-emerald-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">⚡ เชื่อมต่อ Supabase Cloud Database แล้ว</span>
+          <span class="bg-emerald-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">⚡ เชื่อมต่อ Supabase Cloud Database</span>
+          <span class="text-blue-200 text-xs">รองรับไฟล์ .xlsx / .xls / .csv</span>
         </div>
-        <h1 class="text-xl sm:text-2xl font-bold mt-1">ระบบตรวจสอบเวลาเข้า-ออกงาน & ทะเบียนบุคลากร</h1>
-        <p class="text-xs sm:text-sm text-blue-100 mt-0.5">ข้อมูลซิงก์ตรงกับฐานข้อมูลเรียลไทม์ ลบคนลาออกและนำเข้าข้อมูลได้ทันที</p>
+        <h1 class="text-xl sm:text-2xl font-bold mt-1">ระบบตรวจสอบเวลาเข้า-ออกงาน & จัดการทะเบียนบุคลากร</h1>
+        <p class="text-xs sm:text-sm text-blue-100 mt-0.5">บันทึกประวัติการนำเข้าไฟล์ ลบรายชื่อคนลาออก และรองรับการเพิ่มคนใหม่แทนที่อัตโนมัติ</p>
       </div>
 
+      <!-- Import & Export Buttons -->
       <div class="flex flex-wrap items-center gap-2">
         <input type="file" id="fileInputAppend" accept=".xlsx,.xls,.xlsm,.csv" class="hidden" />
+
         <button id="btnImportAppend" type="button" class="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
-          <span>📂 นำเข้าไฟล์สแกนนิ้ว Excel/CSV</span>
+          <span>📂 1. นำเข้าไฟล์สแกนนิ้ว (บันทึกสะสม + เพิ่มคนใหม่)</span>
+        </button>
+
+        <button id="btnExportXlsx" type="button" class="bg-blue-700 hover:bg-blue-600 text-white font-medium text-sm px-3.5 py-2.5 rounded-lg shadow flex items-center gap-1.5 border border-blue-500 transition">
+          <span>📊 ส่งออกผลตรวจ Excel (.xlsx)</span>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Toast Notification -->
+  <!-- Notification Toast Banner -->
   <div id="toastBanner" class="hidden max-w-7xl mx-auto mt-3 px-4 w-full">
     <div id="toastBox" class="rounded-lg px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm border bg-slate-800 text-white">
       <span id="toastText"></span>
-      <button onclick="document.getElementById('toastBanner').classList.add('hidden')" class="text-xs underline ml-4">ปิด</button>
+      <button id="btnCloseToast" type="button" class="text-xs underline ml-4 shrink-0">ปิด</button>
     </div>
   </div>
 
+  <!-- Main Content Container -->
   <main class="max-w-7xl mx-auto px-4 py-4 flex-1 w-full space-y-4">
     <!-- Controls -->
     <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
         <div>
-          <label for="selDate" class="block text-xs font-bold text-slate-700 mb-1">📅 เลือกวันที่ตรวจสอบ</label>
+          <label for="selDate" class="block text-xs font-bold text-slate-700 mb-1">📅 เลือกวันที่ตรวจสอบหลัก</label>
           <input type="date" id="selDate" class="w-full bg-amber-50 border-2 border-[#1B365D] rounded-lg px-3 py-1.5 text-sm font-bold text-[#1B365D]" />
         </div>
         <div>
@@ -59,14 +67,20 @@
           <label for="outTimeInput" class="block text-xs font-semibold text-slate-600 mb-1">🕔 เกณฑ์ออกงานเย็น</label>
           <input type="time" id="outTimeInput" value="16:30" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-800" />
         </div>
+        <div class="lg:col-span-3 flex justify-end gap-2">
+          <button id="btnClearStorage" type="button" class="bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 font-semibold text-xs px-3 py-2 rounded-lg transition">
+            🗑️ ล้างข้อมูลสแกนของวันที่เลือก
+          </button>
+        </div>
       </div>
     </section>
 
-    <!-- KPI Cards -->
+    <!-- KPI Summary Cards -->
     <section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5">
       <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
-        <div class="text-xs font-semibold text-slate-500">บุคลากรทั้งหมด</div>
+        <div class="text-xs font-semibold text-slate-500">บุคลากรปัจจุบัน</div>
         <div id="kpiTotalEmp" class="text-2xl font-bold text-[#1B365D] mt-0.5">0</div>
+        <div class="text-[11px] text-slate-400">ในทะเบียนหลัก</div>
       </div>
       <div class="bg-white rounded-xl p-3 border border-blue-200 shadow-sm">
         <div class="text-xs font-semibold text-blue-700">สแกนเข้าเช้า</div>
@@ -90,17 +104,17 @@
       </div>
     </section>
 
-    <!-- Tabs -->
+    <!-- Navigation Tabs -->
     <nav class="flex flex-wrap gap-2 border-b border-slate-300 pb-2">
       <button id="tabBtnDaily" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-[#1B365D] text-white shadow-sm">
-        📋 ตารางสรุปรายวัน
+        📋 1. ตารางสรุปรายวัน
       </button>
       <button id="tabBtnRoster" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
-        👥 ทะเบียนบุคลากร & จัดการคนลาออก (<span id="rosterCountBadge">0</span> คน)
+        👥 2. ทะเบียนบุคลากร & จัดการคนลาออก/แทนที่ (<span id="rosterCountBadge">0</span> คน)
       </button>
     </nav>
 
-    <!-- Tab 1: Daily Table -->
+    <!-- TAB 1: Daily Table -->
     <section id="viewDaily" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
       <div class="overflow-x-auto max-h-[500px] border border-slate-200 rounded-lg">
         <table class="w-full text-left border-collapse text-xs">
@@ -121,10 +135,10 @@
       </div>
     </section>
 
-    <!-- Tab 2: Roster & Delete/Add -->
+    <!-- TAB 2: Master Roster & Delete/Replace Manager -->
     <section id="viewRoster" class="hidden space-y-4">
       <div class="bg-purple-50 rounded-xl shadow-sm border border-purple-200 p-4">
-        <h3 class="text-sm font-bold text-purple-900 mb-2">➕ เพิ่มรายชื่อบุคลากรใหม่เข้า Supabase</h3>
+        <h3 class="text-sm font-bold text-purple-900 mb-2">➕ เพิ่มรายชื่อบุคลากรใหม่ / ใส่ชื่อแทนที่คนลาออก</h3>
         <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
           <div>
             <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">ชื่อ-นามสกุล</label>
@@ -143,13 +157,13 @@
             <input type="text" id="manualPos" placeholder="เจ้าพนักงาน" class="w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs" />
           </div>
           <button id="btnManualAddPerson" type="button" class="bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs px-3.5 py-2 rounded-lg shadow transition">
-            + เพิ่มลงฐานข้อมูล
+            + บันทึกรายชื่อเข้าทะเบียน
           </button>
         </div>
       </div>
 
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-        <h2 class="text-sm font-bold text-[#1B365D] mb-2">ทะเบียนรายชื่อบุคลากรในฐานข้อมูล</h2>
+        <h2 class="text-sm font-bold text-[#1B365D] mb-2">ทะเบียนรายชื่อบุคลากรปัจจุบัน (สามารถกดลบคนลาออกได้ที่นี่)</h2>
         <div class="overflow-x-auto max-h-[460px] border border-slate-200 rounded-lg">
           <table class="w-full text-xs border-collapse">
             <thead>
@@ -159,7 +173,7 @@
                 <th class="p-2">สังกัด/กอง</th>
                 <th class="p-2">ชื่อ-นามสกุล</th>
                 <th class="p-2">ตำแหน่ง</th>
-                <th class="p-2 text-center">จัดการ</th>
+                <th class="p-2 text-center">จัดการ (ลาออก/ลบ)</th>
               </tr>
             </thead>
             <tbody id="rosterTableBody" class="divide-y divide-slate-200"></tbody>
@@ -171,7 +185,7 @@
 
   <script>
     // -------------------------------------------------------------
-    // 1. SUPABASE CONFIGURATION (นำค่าจากขั้นตอนที่ 2 มาใส่ตรงนี้)
+    // 1. SUPABASE CONFIGURATION
     // -------------------------------------------------------------
     const SUPABASE_URL = 'https://louycthhlxmauphmjmsx.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_XxrOenamd5_zbwhU9w__Gg_gtspTFyS';
@@ -182,37 +196,41 @@
     let scanRecords = [];
 
     const selDate = document.getElementById('selDate');
+    const dailyTableBody = document.getElementById('dailyTableBody');
+    const rosterTableBody = document.getElementById('rosterTableBody');
+    const rosterCountBadge = document.getElementById('rosterCountBadge');
+
+    // Default Today's Date
     selDate.value = new Date().toISOString().split('T')[0];
 
-    // Fetch data from Supabase
+    // -------------------------------------------------------------
+    // 2. FETCH DATA FROM SUPABASE
+    // -------------------------------------------------------------
     async function loadDataFromSupabase() {
       try {
-        // Fetch Employees
+        // ดึงข้อมูลพนักงานทั้งหมด
         const { data: empData, error: empErr } = await db.from('employees').select('*').order('id', { ascending: true });
         if (empErr) throw empErr;
         rosterData = empData || [];
 
-        // Fetch Attendance Scans for selected date
+        // ดึงประวัติการสแกนนิ้วตามวันที่เลือก
         const { data: scanData, error: scanErr } = await db.from('attendance_scans').select('*').eq('scan_date', selDate.value);
         if (scanErr) throw scanErr;
         scanRecords = scanData || [];
 
         renderAll();
       } catch (err) {
-        showToast(`เกิดข้อผิดพลาดในการดึงข้อมูล: ${err.message}`);
+        showToast(`เกิดข้อผิดพลาดในการโหลดข้อมูล: ${err.message}`);
       }
     }
 
-    function renderAll() {
-      document.getElementById('rosterCountBadge').textContent = rosterData.length;
+    function updateRosterBadge() {
+      rosterCountBadge.textContent = rosterData.length;
       document.getElementById('kpiTotalEmp').textContent = rosterData.length;
-      renderRoster();
-      renderDailyTable();
     }
 
     function renderRoster() {
-      const tbody = document.getElementById('rosterTableBody');
-      tbody.innerHTML = '';
+      rosterTableBody.innerHTML = '';
       rosterData.forEach((emp, index) => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50";
@@ -223,19 +241,17 @@
           <td class="p-2 font-bold text-slate-800">${emp.fullname}</td>
           <td class="p-2">${emp.position || '-'}</td>
           <td class="p-2 text-center">
-            <button onclick="deleteEmployee(${emp.id}, '${emp.fullname}')" class="bg-rose-500 hover:bg-rose-600 text-white text-[11px] font-semibold px-2.5 py-1 rounded transition">
+            <button onclick="deleteEmployee(${emp.id}, '${emp.fullname}')" class="bg-rose-500 hover:bg-rose-600 text-white text-[11px] font-semibold px-2 py-1 rounded transition">
               🗑️ ลบ / ลาออก
             </button>
           </td>
         `;
-        tbody.appendChild(tr);
+        rosterTableBody.appendChild(tr);
       });
     }
 
     function renderDailyTable() {
-      const tbody = document.getElementById('dailyTableBody');
-      tbody.innerHTML = '';
-
+      dailyTableBody.innerHTML = '';
       const lateLimit = document.getElementById('lateTimeInput').value;
       const outLimit = document.getElementById('outTimeInput').value;
 
@@ -284,123 +300,7 @@
           <td class="py-2 px-2.5 text-center font-mono">${outTime}</td>
           <td class="py-2 px-2.5 text-center">${outStatus}</td>
         `;
-        tbody.appendChild(tr);
+        dailyTableBody.appendChild(tr);
       });
 
-      document.getElementById('kpiMorningIn').textContent = morningCount;
-      document.getElementById('kpiOnTime').textContent = onTimeCount;
-      document.getElementById('kpiLate').textContent = lateCount;
-      document.getElementById('kpiEveningOut').textContent = eveningCount;
-      document.getElementById('kpiMissing').textContent = missingCount;
-    }
-
-    // Add New Employee to Supabase
-    document.getElementById('btnManualAddPerson').addEventListener('click', async () => {
-      const fullname = document.getElementById('manualFullname').value.trim();
-      const emp_type = document.getElementById('manualType').value.trim();
-      const department = document.getElementById('manualDept').value.trim();
-      const position = document.getElementById('manualPos').value.trim();
-
-      if (!fullname) return alert('กรุณากรอกชื่อ-นามสกุล');
-
-      const { error } = await db.from('employees').insert([{ fullname, emp_type, department, position }]);
-      if (error) {
-        showToast(`เกิดข้อผิดพลาด: ${error.message}`);
-      } else {
-        document.getElementById('manualFullname').value = '';
-        showToast(`เพิ่ม "${fullname}" ลง Supabase เรียบร้อยแล้ว`);
-        loadDataFromSupabase();
-      }
-    });
-
-    // Delete Employee from Supabase
-    window.deleteEmployee = async function(id, name) {
-      if (confirm(`ต้องการลบ "${name}" ออกจากฐานข้อมูล Supabase หรือไม่?`)) {
-        const { error } = await db.from('employees').delete().eq('id', id);
-        if (error) {
-          showToast(`เกิดข้อผิดพลาดในการลบ: ${error.message}`);
-        } else {
-          showToast(`ลบรายชื่อ ${name} เรียบร้อยแล้ว`);
-          loadDataFromSupabase();
-        }
-      }
-    };
-
-    // Upload & Append Scans to Supabase
-    document.getElementById('btnImportAppend').addEventListener('click', () => {
-      document.getElementById('fileInputAppend').click();
-    });
-
-    document.getElementById('fileInputAppend').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = async function(evt) {
-        const data = new Uint8Array(evt.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-
-        let scanInserts = [];
-        let empNamesToInsert = new Set();
-
-        jsonRows.forEach((row, idx) => {
-          if (idx === 0 || row.length < 2) return;
-          let name = String(row[1] || row[0] || '').trim();
-          let dtStr = String(row[2] || row[1] || '').trim();
-          if (!name || !dtStr) return;
-
-          const parts = dtStr.split(' ');
-          const scan_date = parts[0] || selDate.value;
-          const scan_time = parts[1] || '08:00:00';
-
-          scanInserts.push({ fullname: name, scan_date, scan_time });
-          empNamesToInsert.add(name);
-        });
-
-        // 1. Check and Auto-add Missing Employees
-        for (const name of empNamesToInsert) {
-          const exists = rosterData.some(e => e.fullname.trim() === name);
-          if (!exists) {
-            await db.from('employees').insert([{ fullname: name, department: 'เพิ่มให้อัตโนมัติ' }]);
-          }
-        }
-
-        // 2. Insert Attendance Records
-        if (scanInserts.length > 0) {
-          const { error } = await db.from('attendance_scans').insert(scanInserts);
-          if (error) {
-            showToast(`เกิดข้อผิดพลาด: ${error.message}`);
-          } else {
-            showToast(`นำเข้าสำเร็จ ${scanInserts.length} รายการลง Supabase`);
-            loadDataFromSupabase();
-          }
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    });
-
-    // UI & Event Handlers
-    document.getElementById('tabBtnDaily').addEventListener('click', () => {
-      document.getElementById('viewDaily').classList.remove('hidden');
-      document.getElementById('viewRoster').classList.add('hidden');
-    });
-
-    document.getElementById('tabBtnRoster').addEventListener('click', () => {
-      document.getElementById('viewRoster').classList.remove('hidden');
-      document.getElementById('viewDaily').classList.add('hidden');
-    });
-
-    selDate.addEventListener('change', loadDataFromSupabase);
-
-    function showToast(msg) {
-      document.getElementById('toastText').textContent = msg;
-      document.getElementById('toastBanner').classList.remove('hidden');
-      setTimeout(() => document.getElementById('toastBanner').classList.add('hidden'), 4000);
-    }
-
-    // Initial Load
-    loadDataFromSupabase();
-  </script>
-</body>
-</html>
+      document.getElementById('kpiMorningIn
