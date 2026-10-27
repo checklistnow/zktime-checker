@@ -114,7 +114,7 @@
       <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
         <div class="text-xs font-semibold text-slate-500">บุคลากรทั้งหมด</div>
         <div id="kpiTotalEmp" class="text-2xl font-bold text-[#1B365D] mt-0.5">143</div>
-        <div class="text-[11px] text-slate-400">รวมที่เพิ่มอัตโนมัติ</div>
+        <div class="text-[11px] text-slate-400">รายชื่อที่ระบบพบเพิ่ม</div>
       </div>
       <div class="bg-purple-50 rounded-xl p-3 border-2 border-purple-300 shadow-sm">
         <div class="text-xs font-bold text-purple-800">✨ เพิ่มคนอัตโนมัติ</div>
@@ -165,7 +165,7 @@
         🕒 3. ข้อมูลสแกนดิบและรายการสแกนซ้ำ (<span id="rawCountBadge">267</span> รายการ)
       </button>
       <button id="tabBtnRoster" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
-        👥 4. ทะเบียนรายชื่อหลักและคนเพิ่มอัตโนมัติ (<span id="rosterCountBadge">143</span> คน)
+        👥 4. ทะเบียนรายชื่อบุคลากร (<span id="rosterCountBadge">143</span> คน)
       </button>
       <button id="tabBtnExamples" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 border border-amber-500 shadow-sm">
         📖 5. ตัวอย่างไฟล์สแกนนิ้ว & กดทดลองใช้ (ครบ 5 แบบ)
@@ -193,7 +193,7 @@
             <option value="กองสาธารณสุขและสิ่งแวดล้อม">กองสาธารณสุขและสิ่งแวดล้อม</option>
             <option value="กองการศึกษา">กองการศึกษา</option>
             <option value="กองสวัสดิการสังคม">กองสวัสดิการสังคม</option>
-            <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)">✨ ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)</option>
+            <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)">✨ ยังไม่ระบุกอง</option>
           </select>
 
           <select id="filterStatus" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
@@ -348,7 +348,7 @@
                 <option value="กองการศึกษา">กองการศึกษา</option>
                 <option value="กองสวัสดิการสังคม">กองสวัสดิการสังคม</option>
                 <option value="ผู้บริหารท้องถิ่น">ผู้บริหารท้องถิ่น</option>
-                <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)">ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)</option>
+                <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)">ยังไม่ระบุกอง</option>
               </select>
             </div>
             <div>
@@ -364,7 +364,7 @@
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-          <h2 class="text-sm font-bold text-[#1B365D] mb-2">ทะเบียนบุคลากรหลักและรายชื่อที่เพิ่มอัตโนมัติ (คลิกเปลี่ยนประเภท/สังกัด/ตำแหน่งได้ทันที)</h2>
+          <h2 class="text-sm font-bold text-[#1B365D] mb-2">ทะเบียนรายชื่อบุคลากร (คลิกเปลี่ยนประเภท/สังกัด/ตำแหน่งได้ทันที)</h2>
           <div class="overflow-x-auto max-h-[460px] border border-slate-200 rounded-lg">
             <table class="w-full text-xs border-collapse">
               <thead>
@@ -737,7 +737,7 @@
             dept: "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)",
             fname: nameParts.fname,
             lname: nameParts.lname,
-            pos: "บุคลากร (เพิ่มอัตโนมัติ)",
+            pos: "บุคลากร",
             fullname: nameParts.fullname,
             key: key,
             isAutoAdded: true
@@ -1189,10 +1189,10 @@
         const tr = document.createElement("tr");
         tr.className = e.isDup
           ? "bg-orange-50/70 hover:bg-orange-100/70"
-          : (e.isAutoAdded ? "bg-purple-50/60 hover:bg-purple-100/60" : "hover:bg-slate-50");
+          : (e.isAutoAdded && e.dept === "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)" ? "bg-purple-50/60 hover:bg-purple-100/60" : "bg-white hover:bg-slate-50");
 
-        const autoBadge = e.isAutoAdded
-          ? ` <span class="inline-block ml-1 px-2 py-0.5 text-[10px] rounded-full bg-purple-200 text-purple-900 font-bold border border-purple-400">✨ เพิ่มอัตโนมัติ</span>`
+        const autoBadge = e.isAutoAdded && e.dept === "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)"
+          ? ` <span class="px-1.5 py-0.5 text-[10px] rounded-full bg-purple-200 text-purple-900 font-bold">✨ เพิ่มอัตโนมัติ</span>`
           : "";
 
         const mBadge = e.mStatus === "ปกติ (ทันเวลา)"
@@ -1300,9 +1300,9 @@
         const tr = document.createElement("tr");
         tr.className = r.scanStatus === "สแกนซ้ำ"
           ? "bg-orange-50 font-semibold"
-          : (r.isAutoAdded ? "bg-purple-50/70" : "hover:bg-slate-50");
-        const autoTag = r.isAutoAdded
-          ? ` <span class="px-1.5 py-0.5 text-[10px] rounded-full bg-purple-200 text-purple-900 font-bold">✨ เพิ่มชื่ออัตโนมัติ</span>`
+          : (r.isAutoAdded && r.empDept === "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)" ? "bg-purple-50/70" : "bg-white hover:bg-slate-50");
+        const autoTag = r.isAutoAdded && r.empDept === "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)"
+          ? ` <span class="px-1.5 py-0.5 text-[10px] rounded-full bg-purple-200 text-purple-900 font-bold">✨ เพิ่มอัตโนมัติ</span>`
           : "";
         const stBadge = r.scanStatus === "สแกนซ้ำ"
           ? `<span class="px-2.5 py-0.5 rounded-full bg-orange-200 text-orange-900 font-bold border border-orange-400">⚠️ สแกนซ้ำ</span>`
@@ -1335,11 +1335,13 @@
 
       rosterData.forEach((emp, idx) => {
         const tr = document.createElement("tr");
-        tr.className = emp.isAutoAdded ? "bg-purple-50/70 hover:bg-purple-100/70" : "hover:bg-slate-50";
+        tr.className = emp.isAutoAdded && emp.dept === "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)"
+          ? "bg-purple-50/70 hover:bg-purple-100/70"
+          : "bg-white hover:bg-slate-50";
         const deptOptions = depts.map(d => `<option value="${d}" ${emp.dept === d ? "selected" : ""}>${d}</option>`).join("");
-        const sourceBadge = emp.isAutoAdded
-          ? `<span class="px-2 py-0.5 rounded-full bg-purple-200 text-purple-900 font-bold text-[10px]">✨ เพิ่มอัตโนมัติ</span>`
-          : `<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px]">ทะเบียนหลัก</span>`;
+        const sourceBadge = emp.isAutoAdded && emp.dept === "ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)"
+          ? `<span class="px-1.5 py-0.5 text-[10px] rounded-full bg-purple-200 text-purple-900 font-bold">✨ เพิ่มอัตโนมัติ</span>`
+          : "";
 
         tr.innerHTML = `
           <td class="p-2 text-slate-500">${emp.id}</td>
@@ -1382,6 +1384,9 @@
           rosterData[i].dept = this.value;
           const rawCopy = scanRecords.map(r => ({ rawCat: r.rawCat, rawName: r.rawName, dtStr: `${r.dateStr} ${r.timeStr}` }));
           rebuildScanRecords(rawCopy);
+          renderRosterAndAliases();
+          renderAll();
+          saveAppData();
           showToast(`อัปเดตสังกัดของ ${rosterData[i].fullname} เป็น "${this.value}" เรียบร้อยแล้ว`, "info");
         });
       });
