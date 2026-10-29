@@ -11,6 +11,52 @@
     body { font-family: 'Noto Sans Thai', 'Inter', sans-serif; background-color: #f1f5f9; color: #0f172a; }
     .table-sticky th { position: sticky; top: 0; z-index: 10; }
   </style>
+
+  <style id="dark-pro-dashboard-theme">
+    /* Dark Pro dashboard only: keep the rest of the app and data workflow unchanged. */
+    #viewDashboard { color:#e2e8f0; }
+    #viewDashboard > div,
+    #viewDashboard .dash-panel { background:linear-gradient(145deg,#111d32 0%,#0b1424 100%) !important; border-color:#243650 !important; color:#e2e8f0; box-shadow:0 12px 28px rgba(2,8,23,.22); }
+    #viewDashboard .dash-hero { position:relative; overflow:hidden; background:radial-gradient(ellipse at 85% 0%,rgba(37,99,235,.28),transparent 42%),linear-gradient(125deg,#101c31,#0b1220 68%,#111d32) !important; }
+    #viewDashboard .dash-hero:after { content:""; position:absolute; width:220px;height:220px;right:-90px;top:-115px;border:1px solid rgba(96,165,250,.18);border-radius:50%;box-shadow:0 0 0 28px rgba(96,165,250,.035),0 0 0 58px rgba(96,165,250,.025);pointer-events:none; }
+    #viewDashboard .dash-eyebrow { color:#7dd3fc; letter-spacing:.12em; text-transform:uppercase; }
+    #viewDashboard .dash-subtle, #viewDashboard .text-slate-500, #viewDashboard .text-slate-400 { color:#94a9c4 !important; }
+    #viewDashboard .text-slate-700, #viewDashboard .text-slate-600 { color:#d7e3f3 !important; }
+    #viewDashboard .text-\[\#1B365D\] { color:#e2e8f0 !important; }
+    #viewDashboard .dash-kpi { position:relative; min-height:112px; background:linear-gradient(145deg,rgba(23,39,62,.96),rgba(14,25,42,.98)) !important; border:1px solid #2a3d58 !important; border-radius:14px; padding:15px; transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
+    #viewDashboard .dash-kpi:hover { transform:translateY(-2px); border-color:#4775a9 !important; box-shadow:0 10px 22px rgba(2,8,23,.22); }
+    #viewDashboard .dash-kpi .dash-kpi-value { font-size:1.9rem; line-height:2.2rem; font-weight:750; letter-spacing:-.04em; }
+    #viewDashboard .dash-kpi .dash-kpi-icon { display:inline-flex; align-items:center; justify-content:center; width:30px;height:30px;border-radius:9px;background:rgba(96,165,250,.12);font-size:15px; }
+    #viewDashboard .dash-kpi-total .dash-kpi-value { color:#e2e8f0 !important; }
+    #viewDashboard .dash-kpi-green .dash-kpi-value { color:#6ee7b7 !important; }
+    #viewDashboard .dash-kpi-amber .dash-kpi-value { color:#fcd34d !important; }
+    #viewDashboard .dash-kpi-red .dash-kpi-value { color:#fda4af !important; }
+    #viewDashboard .dash-kpi-blue .dash-kpi-value { color:#93c5fd !important; }
+    #viewDashboard .dash-kpi-purple .dash-kpi-value { color:#c4b5fd !important; }
+    #viewDashboard .dash-subpanel { background:rgba(10,20,35,.55) !important; border:1px solid #263852 !important; border-radius:12px; }
+    #viewDashboard .dash-subpanel h3 { color:#e2e8f0 !important; }
+    #viewDashboard .bg-slate-100 { background-color:#1b2b42 !important; }
+    #viewDashboard #dashAttendanceBars .h-2 > div { transition:width .35s ease; }
+    #viewDashboard #dashTrend .bg-blue-600 { background:linear-gradient(90deg,#2563eb,#38bdf8) !important; }
+    #viewDashboard #dashAlerts button { background:rgba(18,31,51,.9) !important; border-color:#2a3d58 !important; color:#dbeafe !important; transition:transform .16s ease,border-color .16s ease,background .16s ease; }
+    #viewDashboard #dashAlerts button:hover { transform:translateX(2px); background:#1a2b45 !important; border-color:#5285bf !important; }
+    #viewDashboard #dashAlerts .dash-alert-amber { border-left:3px solid #fbbf24 !important; }
+    #viewDashboard #dashAlerts .dash-alert-red { border-left:3px solid #fb7185 !important; }
+    #viewDashboard #dashAlerts .dash-alert-purple { border-left:3px solid #a78bfa !important; }
+    #viewDashboard #dashAlerts .dash-alert-blue { border-left:3px solid #60a5fa !important; }
+    #viewDashboard #dashDeptBody tr { border-color:#263852 !important; }
+    #viewDashboard #dashDeptBody tr:nth-child(even) { background:rgba(30,48,72,.28); }
+    #viewDashboard #dashDeptBody td { color:#d7e3f3 !important; border-color:#263852 !important; }
+    #viewDashboard .dash-table-wrap { border:1px solid #263852; border-radius:10px; overflow:hidden; }
+    #viewDashboard .dash-table-head { background:#1a3150; color:#eaf2ff; }
+    #viewDashboard .dash-status-pill { display:inline-flex; align-items:center; gap:6px; border:1px solid #315071; border-radius:999px; padding:5px 9px; background:rgba(30,64,104,.35); color:#bfdbfe; font-size:11px; font-weight:700; }
+    #viewDashboard #dashThreeDayDetails .dash-three-day-row { background:rgba(10,20,35,.62); border:1px solid #2a3d58; border-radius:10px; padding:12px; }
+    #viewDashboard #dashThreeDayDetails .dash-three-day-name { color:#f8fafc; font-weight:700; }
+    #viewDashboard #dashThreeDayDetails .dash-three-day-meta { color:#9fb2cc; font-size:12px; }
+    #viewDashboard #dashThreeDayDetails .dash-three-day-status { color:#fecaca; background:rgba(127,29,29,.28); border:1px solid rgba(248,113,113,.25); border-radius:999px; padding:3px 8px; font-size:11px; font-weight:700; white-space:nowrap; }
+    @media (prefers-reduced-motion: reduce) { #viewDashboard *, #viewDashboard *:before, #viewDashboard *:after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
+  </style>
+
 </head>
 <body class="min-h-screen flex flex-col">
   <!-- Top Header & Action Buttons -->
@@ -155,8 +201,12 @@
 
     <!-- Navigation Tabs -->
     <nav class="flex flex-wrap gap-2 border-b border-slate-300 pb-2">
-      <button id="tabBtnDaily" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-[#1B365D] text-white shadow-sm">
+      <button id="tabBtnDashboard" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-[#1B365D] text-white shadow-sm">📊 0. Dashboard / แจ้งเตือน</button>
+      <button id="tabBtnDaily" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
         📋 1. ตารางสรุปรายวันและเช็คย้อนหลัง (<span id="dailyCountBadge">143</span> คน)
+      </button>
+      <button id="tabBtnMonthly" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
+        📈 2. รายงานสรุปรายเดือน
       </button>
       <button id="tabBtnCat" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
         🏛️ 2. สรุปแยกตามประเภทบุคลากรและกอง/สำนัก
@@ -172,8 +222,65 @@
       </button>
     </nav>
 
+    <!-- TAB 0: Dark Pro Dashboard, Alerts and Department Summary -->
+    <section id="viewDashboard" class="space-y-4">
+      <div class="dash-hero rounded-2xl shadow-xl border p-5 sm:p-6">
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+          <div>
+            <div class="dash-eyebrow text-[10px] font-bold mb-2">ATTENDANCE INTELLIGENCE · DARK PRO</div>
+            <h2 class="text-xl sm:text-2xl font-bold text-white">ภาพรวมการปฏิบัติงาน</h2>
+            <p class="dash-subtle text-xs sm:text-sm mt-1">สรุปจากข้อมูลสแกนและสถานะของวันที่เลือกด้านบน</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="dash-status-pill"><span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span> สรุปข้อมูลในระบบ</span>
+            <div class="rounded-xl border border-blue-400/20 bg-blue-950/40 px-4 py-2.5">
+              <div class="text-[10px] uppercase tracking-wider text-blue-200">วันที่ตรวจสอบ</div>
+              <div id="dashDateLabel" class="text-sm font-bold text-white mt-0.5">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3" id="dashKpis">
+          <div class="dash-kpi dash-kpi-total"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">บุคลากรทั้งหมด</div><span class="dash-kpi-icon">👥</span></div><div id="dashTotal" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">รายชื่อในทะเบียน</div></div>
+          <div class="dash-kpi dash-kpi-green"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">มาทันเวลา</div><span class="dash-kpi-icon">✓</span></div><div id="dashOnTime" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">ผ่านเกณฑ์เวลาเข้า</div></div>
+          <div class="dash-kpi dash-kpi-amber"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">มาสาย</div><span class="dash-kpi-icon">◷</span></div><div id="dashLate" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">หลังเวลาเกณฑ์</div></div>
+          <div class="dash-kpi dash-kpi-red"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">ขาดสแกนเช้า</div><span class="dash-kpi-icon">!</span></div><div id="dashMissingMorning" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">ต้องตรวจสอบ</div></div>
+          <div class="dash-kpi dash-kpi-blue"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">สแกนออกแล้ว</div><span class="dash-kpi-icon">↗</span></div><div id="dashOut" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">มีข้อมูลเวลาออก</div></div>
+          <div class="dash-kpi dash-kpi-purple"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">ลา / ไม่มา</div><span class="dash-kpi-icon">◌</span></div><div id="dashLeave" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">บันทึกสถานะแล้ว</div></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <div class="dash-subpanel p-4"><div class="flex items-center justify-between gap-2 mb-4"><h3 class="font-bold text-sm">สัดส่วนการมาทำงาน</h3><span class="text-[10px] text-slate-400">ตามวันที่เลือก</span></div><div id="dashAttendanceBars" class="space-y-4"></div></div>
+          <div class="dash-subpanel p-4"><div class="flex items-center justify-between gap-2 mb-4"><h3 class="font-bold text-sm">แนวโน้มการสแกนเข้า</h3><span class="text-[10px] text-slate-400">7 วันที่มีข้อมูลล่าสุด</span></div><div id="dashTrend" class="space-y-3"></div><p class="text-[10px] text-slate-500 mt-3">แสดงเฉพาะวันที่มีข้อมูลจริงในระบบ</p></div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="dash-panel rounded-2xl shadow-lg border p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3 mb-4"><div><h2 class="font-bold text-white">🔔 รายการที่ควรตรวจสอบ</h2><p class="dash-subtle text-xs mt-1">กดรายการเพื่อเปิดตารางและกรองข้อมูล</p></div><span class="dash-status-pill">ตรวจสอบ</span></div>
+          <div id="dashAlerts" class="space-y-2"></div>
+        </div>
+        <div class="dash-panel rounded-2xl shadow-lg border p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3 mb-4"><div><h2 class="font-bold text-white">🏛️ สรุปแยกตามกอง / สำนัก</h2><p class="dash-subtle text-xs mt-1">เปรียบเทียบสถานะของแต่ละสังกัด</p></div><span class="dash-status-pill">รายหน่วยงาน</span></div>
+          <div class="dash-table-wrap overflow-x-auto"><table class="w-full text-xs"><thead><tr class="dash-table-head"><th class="p-2.5 text-left">กอง / สำนัก</th><th class="p-2.5 text-right">ทั้งหมด</th><th class="p-2.5 text-right">ทันเวลา</th><th class="p-2.5 text-right">สาย</th><th class="p-2.5 text-right">ขาดเช้า</th><th class="p-2.5 text-right">ลา/ไม่มา</th></tr></thead><tbody id="dashDeptBody" class="divide-y"></tbody></table></div>
+        </div>
+      </div>
+      <div class="dash-panel rounded-2xl shadow-lg border p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-start gap-3">
+            <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-400/20 text-xl">⚠️</div>
+            <div><h2 class="font-bold text-white">ขาดงาน / ลาติดต่อกัน 3 วัน</h2><p class="dash-subtle text-xs mt-1">ตรวจจากสถานะที่บันทึกไว้ในแต่ละวัน ไม่รวมวันที่สแกนเข้าแล้วถูกล็อกสถานะเป็น “มา”</p></div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="dash-status-pill"><span id="dashThreeDayCount" class="font-bold">0</span> คนที่ต้องติดตาม</span>
+            <button id="btnDashThreeDayToggle" type="button" class="rounded-lg border border-blue-400/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-100 px-3 py-2 text-xs font-bold transition">ดูรายชื่อ</button>
+          </div>
+        </div>
+        <div id="dashThreeDayDetails" class="hidden mt-4">
+          <div id="dashThreeDayList" class="space-y-2"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- TAB 1: Daily & Historical Attendance Table -->
-    <section id="viewDaily" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+    <section id="viewDaily" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
           <select id="filterType" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
@@ -235,6 +342,35 @@
           <tbody id="dailyTableBody" class="divide-y divide-slate-200"></tbody>
         </table>
       </div>
+    </section>
+
+    <!-- TAB Monthly: Summary report -->
+    <section id="viewMonthly" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5 space-y-4">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-[#1B365D]">รายงานสรุปการมาปฏิบัติงานรายเดือน</h2>
+          <p class="text-xs text-slate-500 mt-1">รายงานจากประวัติสแกนและสถานะรายวันที่บันทึกไว้ เลือกเดือนเพื่อส่งออก Excel</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <label for="monthlyReportMonth" class="text-sm font-semibold text-slate-700">เดือนที่รายงาน</label>
+          <input id="monthlyReportMonth" type="month" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <button id="btnExportMonthly" type="button" class="rounded-lg bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 text-sm font-bold">ส่งออก Excel รายเดือน</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3" id="monthlyReportKpis">
+        <div class="rounded-lg border p-3"><div class="text-xs text-slate-500">บุคลากรในทะเบียน</div><div id="monthlyKpiPeople" class="text-2xl font-bold text-slate-800">0</div></div>
+        <div class="rounded-lg border p-3"><div class="text-xs text-slate-500">วันมาปฏิบัติงาน</div><div id="monthlyKpiPresent" class="text-2xl font-bold text-emerald-700">0</div></div>
+        <div class="rounded-lg border p-3"><div class="text-xs text-slate-500">วันมาสาย</div><div id="monthlyKpiLate" class="text-2xl font-bold text-amber-700">0</div></div>
+        <div class="rounded-lg border p-3"><div class="text-xs text-slate-500">วันไม่มา</div><div id="monthlyKpiAbsent" class="text-2xl font-bold text-rose-700">0</div></div>
+        <div class="rounded-lg border p-3"><div class="text-xs text-slate-500">วันลา (ทุกประเภท)</div><div id="monthlyKpiLeave" class="text-2xl font-bold text-indigo-700">0</div></div>
+      </div>
+      <div class="overflow-x-auto border border-slate-200 rounded-lg">
+        <table class="w-full text-xs border-collapse">
+          <thead><tr class="bg-[#1B365D] text-white"><th class="p-2 text-left">สังกัด/กอง</th><th class="p-2 text-right">บุคลากร</th><th class="p-2 text-right">มาปกติ</th><th class="p-2 text-right">มาสาย</th><th class="p-2 text-right">ไม่มา</th><th class="p-2 text-right">ลาป่วย</th><th class="p-2 text-right">ลากิจ</th><th class="p-2 text-right">ลาพักร้อน</th><th class="p-2 text-right">ยังไม่ระบุ</th></tr></thead>
+          <tbody id="monthlyReportDeptBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+      <p class="text-xs text-slate-500">หมายเหตุ: รายงานจะนับเฉพาะวันที่มีข้อมูลสแกนหรือมีการบันทึกสถานะไว้ และจะไม่สรุปวันที่ไม่มีข้อมูลว่าเป็นวันขาดงานโดยอัตโนมัติ</p>
     </section>
 
     <!-- TAB 2: Category & Department Breakdown -->
@@ -1104,6 +1240,7 @@
 
           let nextRawList = [];
           let addedCount = 0;
+          let duplicateSkipped = 0;
           if (appendMode) {
             const existingRaw = scanRecords
               .filter(r => isValidPersonName(r.rawName))
@@ -1116,6 +1253,8 @@
                 seen.add(sig);
                 nextRawList.push(item);
                 addedCount++;
+              } else {
+                duplicateSkipped++;
               }
             }
           } else {
@@ -1132,9 +1271,9 @@
             nextRawList = [...historyFromOtherDays];
             for (const item of extracted) {
               const sig = `${normalizeKey(item.rawName)}|${item.dtStr}`;
-              if (!seen.has(sig)) { seen.add(sig); nextRawList.push(item); }
+              if (!seen.has(sig)) { seen.add(sig); nextRawList.push(item); addedCount++; }
+              else { duplicateSkipped++; }
             }
-            addedCount = extracted.length;
           }
 
           const newlyAddedPeople = rebuildScanRecords(nextRawList);
@@ -1148,12 +1287,198 @@
           const autoAddMsg = newlyAddedPeople.length > 0
             ? ` ✨ เพิ่มเฉพาะชื่อคนใหม่เข้าทะเบียนอัตโนมัติ ${newlyAddedPeople.length} คน (${newlyAddedPeople.join(", ")}) โดยตัดรหัสตัวเลขที่เครื่องออกทั้งหมด`
             : " (จับคู่ชื่อบุคลากรครบถ้วน และตัดรหัสตัวเลขที่เครื่องออกทั้งหมด ไม่เพิ่มตัวเลขเป็นคน)";
-          showToast(`นำเข้าไฟล์ดิบ "${file.name}" สำเร็จ! ประมวลผลสแกนเช้า-เย็น ${extracted.length} รายการ (วันที่ ${newestDate})${autoAddMsg}`, "success");
+          showToast(`นำเข้าไฟล์ดิบ "${file.name}" สำเร็จ! เพิ่มรายการสแกนใหม่ ${addedCount} รายการ${duplicateSkipped ? ` (ข้ามรายการซ้ำ ${duplicateSkipped} รายการ)` : ""} (วันที่ ${newestDate})${autoAddMsg}`, "success");
         } catch (err) {
           showToast("เกิดข้อผิดพลาดในการอ่านไฟล์: " + err.message, "warn");
         }
       };
       reader.readAsArrayBuffer(file);
+    }
+
+    function renderDashboardInsights() {
+      const date = document.getElementById("selDate").value;
+      const lateLimit = (document.getElementById("lateTimeInput").value || "08:30") + ":00";
+      const outLimit = (document.getElementById("outTimeInput").value || "16:30") + ":00";
+      const dayScans = scanRecords.filter(r => r.dateStr === date);
+      const computed = rosterData.map(emp => {
+        const key = normalizeKey(emp.fullname);
+        const mine = dayScans.filter(r => r.key === key);
+        const morning = mine.filter(r => r.shift === "ช่วงเช้า").sort((a,b)=>a.timeStr.localeCompare(b.timeStr));
+        const evening = mine.filter(r => r.shift === "ช่วงเย็น").sort((a,b)=>a.timeStr.localeCompare(b.timeStr));
+        const mTime = morning[0]?.timeStr || "";
+        const eTime = evening[0]?.timeStr || "";
+        const savedStatus = attendanceStatuses[attendanceStatusKey(date, emp.fullname)] || "";
+        return {...emp, mTime, eTime, mStatus: mTime ? (mTime <= lateLimit ? "ปกติ (ทันเวลา)" : "มาสาย") : "ขาดสแกนเช้า", attendanceStatus: mTime ? "มา" : savedStatus, mCnt: morning.length, eCnt: evening.length};
+      });
+      const onTime = computed.filter(e=>e.mStatus === "ปกติ (ทันเวลา)").length;
+      const late = computed.filter(e=>e.mStatus === "มาสาย").length;
+      const missing = computed.filter(e=>!e.mTime).length;
+      const out = computed.filter(e=>!!e.eTime).length;
+      const leave = computed.filter(e=>!e.mTime && ["ไม่มา","ลาป่วย","ลากิจ","ลาพักร้อน"].includes(e.attendanceStatus)).length;
+      const dateLabel = document.getElementById("dashDateLabel");
+      if (dateLabel) dateLabel.textContent = date ? new Date(date+"T00:00:00").toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"}) : "ไม่ระบุ";
+      const vals = {dashTotal:computed.length,dashOnTime:onTime,dashLate:late,dashMissingMorning:missing,dashOut:out,dashLeave:leave};
+      Object.entries(vals).forEach(([id,value])=>{const el=document.getElementById(id);if(el)el.textContent=value;});
+      const bars = document.getElementById("dashAttendanceBars");
+      if (bars) {
+        const items = [{label:"มาทันเวลา",n:onTime,color:"bg-emerald-500"},{label:"มาสาย",n:late,color:"bg-amber-500"},{label:"ขาดสแกนเช้า",n:missing,color:"bg-rose-500"},{label:"สแกนออกแล้ว",n:out,color:"bg-indigo-500"}];
+        bars.innerHTML = items.map(x=>`<div><div class="flex justify-between text-xs mb-1"><span>${x.label}</span><b>${x.n}</b></div><div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-2 rounded-full ${x.color}" style="width:${computed.length?Math.min(100,x.n/computed.length*100):0}%"></div></div></div>`).join("");
+      }
+      const alerts = document.getElementById("dashAlerts");
+      if (alerts) {
+        const alertItems = [
+          {label:"มาสาย",count:late,filter:"LATE",cls:"dash-alert-amber"},
+          {label:"ขาดสแกนเช้า",count:missing,filter:"MISSING",cls:"dash-alert-red"},
+          {label:"ยังไม่ได้กำหนดสถานะ",count:computed.filter(e=>!e.mTime&&!e.attendanceStatus).length,filter:"MISSING",cls:"dash-alert-purple"},
+          {label:"สแกนเข้าแล้วแต่ไม่มีสแกนออก",count:computed.filter(e=>!!e.mTime&&!e.eTime).length,filter:"SCANNED",cls:"dash-alert-blue"}
+        ];
+        alerts.innerHTML = alertItems.map((x,i)=>`<button type="button" data-dash-alert="${i}" class="w-full flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left ${x.cls} hover:brightness-95"><span class="text-sm font-semibold">${x.label}</span><span class="font-bold text-lg">${x.count} <span class="text-xs font-normal">คน</span></span></button>`).join("");
+        alerts.querySelectorAll("[data-dash-alert]").forEach(btn=>btn.addEventListener("click",()=>{
+          const i=Number(btn.dataset.dashAlert); switchTab("tabBtnDaily");
+          document.getElementById("filterStatus").value = i===0 ? "LATE" : (i===1||i===2 ? "MISSING" : "SCANNED");
+          renderAll();
+          if(i===2){document.getElementById("searchEmp").focus();}
+        }));
+      }
+      const depts = [...new Set([...rosterData.map(e=>e.dept||"ไม่ระบุสังกัด"),"ผู้บริหารท้องถิ่น","สำนักปลัดเทศบาล","กองคลัง","กองช่าง","กองสาธารณสุขและสิ่งแวดล้อม","กองการศึกษา","กองสวัสดิการสังคม"])];
+      const deptBody=document.getElementById("dashDeptBody");
+      if(deptBody){deptBody.innerHTML=""; depts.forEach(d=>{const group=computed.filter(e=>(e.dept||"ไม่ระบุสังกัด")===d);if(!group.length)return;const row=document.createElement("tr");row.innerHTML=`<td class="p-2 font-semibold">${d}</td><td class="p-2 text-right">${group.length}</td><td class="p-2 text-right text-emerald-700">${group.filter(e=>e.mStatus==="ปกติ (ทันเวลา)").length}</td><td class="p-2 text-right text-amber-700">${group.filter(e=>e.mStatus==="มาสาย").length}</td><td class="p-2 text-right text-rose-700">${group.filter(e=>!e.mTime).length}</td><td class="p-2 text-right text-purple-700">${group.filter(e=>!e.mTime&&["ไม่มา","ลาป่วย","ลากิจ","ลาพักร้อน"].includes(e.attendanceStatus)).length}</td>`;deptBody.appendChild(row);});}
+      const trend=document.getElementById("dashTrend");
+      if(trend){const dates=[...new Set(scanRecords.map(r=>r.dateStr))].sort().slice(-7);trend.innerHTML=dates.length?dates.map(d=>{const count=new Set(scanRecords.filter(r=>r.dateStr===d&&r.shift==="ช่วงเช้า").map(r=>r.key)).size;return `<div class="flex items-center gap-2 text-xs"><span class="w-24 shrink-0 text-slate-400">${d}</span><div class="flex-1 h-2 bg-slate-100 rounded overflow-hidden"><div class="h-2 bg-blue-600 rounded" style="width:${Math.min(100,rosterData.length?count/rosterData.length*100:0)}%"></div></div><b class="w-8 text-right">${count}</b></div>`;}).join(""):'<p class="text-xs text-slate-400">ยังไม่มีข้อมูลสแกนย้อนหลัง</p>';}
+      renderThreeDayAbsenceAlerts();
+    }
+
+    function renderThreeDayAbsenceAlerts() {
+      const countEl = document.getElementById("dashThreeDayCount");
+      const listEl = document.getElementById("dashThreeDayList");
+      if (!countEl || !listEl) return;
+      const absenceStatuses = new Set(["ไม่มา", "ลาป่วย", "ลากิจ", "ลาพักร้อน"]);
+      const allDates = new Set(scanRecords.map(r => r.dateStr).filter(Boolean));
+      Object.keys(attendanceStatuses || {}).forEach(key => {
+        const splitAt = key.indexOf("::");
+        if (splitAt > 0) allDates.add(key.slice(0, splitAt));
+      });
+      const knownDates = [...allDates].filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+      const results = [];
+      if (knownDates.length) {
+        const start = new Date(knownDates[0] + "T00:00:00");
+        const end = new Date(knownDates[knownDates.length - 1] + "T00:00:00");
+        const workDates = [];
+        for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const day = d.getDay();
+          if (day !== 0 && day !== 6) workDates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);
+        }
+        rosterData.forEach(emp => {
+          const empKey = normalizeKey(emp.fullname);
+          let streak = [];
+          let best = [];
+          workDates.forEach(date => {
+            const hasMorningScan = scanRecords.some(r => r.dateStr === date && r.key === empKey && r.shift === "ช่วงเช้า");
+            const saved = attendanceStatuses[attendanceStatusKey(date, emp.fullname)] || "";
+            const status = hasMorningScan ? "มา" : saved;
+            // นับเฉพาะวันที่มีการยืนยันสถานะขาด/ลา ถ้าวันทำงานไม่มีข้อมูลหรือยังไม่ระบุ ให้ตัด streak
+            if (knownDates.includes(date) && absenceStatuses.has(status)) {
+              streak.push({ date, status });
+              if (streak.length >= 3) best = streak.slice(-3);
+            } else {
+              streak = [];
+            }
+          });
+          if (best.length >= 3) results.push({ fullname: emp.fullname, dept: emp.dept || "ไม่ระบุสังกัด", streak: best, latestDate: best[best.length - 1].date });
+        });
+      }
+      results.sort((a,b) => b.latestDate.localeCompare(a.latestDate) || a.fullname.localeCompare(b.fullname, "th"));
+      countEl.textContent = results.length;
+      if (!results.length) {
+        listEl.innerHTML = '<div class="rounded-lg border border-emerald-400/20 bg-emerald-500/5 p-4 text-sm text-emerald-200">ยังไม่พบผู้ที่มีสถานะไม่มา/ลาติดต่อกัน 3 วัน จากวันที่มีข้อมูลและยืนยันสถานะไว้</div>';
+        return;
+      }
+      const safeText = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));
+      listEl.innerHTML = results.map(item => {
+        const datesText = item.streak.map(x => `${x.date} (${x.status})`).join(" → ");
+        const statusSummary = [...new Set(item.streak.map(x => x.status))].join(" / ");
+        return `<div class="dash-three-day-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"><div class="min-w-0"><div class="dash-three-day-name">${safeText(item.fullname)}</div><div class="dash-three-day-meta mt-1">${safeText(item.dept)} · ${safeText(datesText)}</div></div><span class="dash-three-day-status">${safeText(statusSummary)} · 3 วันทำงานติด</span></div>`;
+      }).join("");
+    }
+
+    function getMonthlyReportData(monthValue) {
+      const month = monthValue || new Date().toISOString().slice(0, 7);
+      const datesSet = new Set(scanRecords.map(r => r.dateStr).filter(d => d && d.startsWith(month)));
+      Object.keys(attendanceStatuses || {}).forEach(key => {
+        const splitAt = key.indexOf("::");
+        if (splitAt > 0 && key.slice(0, splitAt).startsWith(month)) datesSet.add(key.slice(0, splitAt));
+      });
+      const dates = [...datesSet].sort();
+      const lateLimit = (document.getElementById("lateTimeInput")?.value || "08:30") + ":00";
+      const detail = [];
+      const summary = rosterData.map(emp => {
+        const row = { emp, normal:0, late:0, absent:0, sick:0, personal:0, vacation:0, unspecified:0, present:0, daysWithData:0 };
+        dates.forEach(date => {
+          const key = normalizeKey(emp.fullname);
+          const scans = scanRecords.filter(r => r.dateStr === date && r.key === key && r.shift === "ช่วงเช้า").sort((a,b)=>a.timeStr.localeCompare(b.timeStr));
+          const saved = attendanceStatuses[attendanceStatusKey(date, emp.fullname)] || "";
+          let status = "";
+          let time = scans[0]?.timeStr || "";
+          if (scans.length) {
+            status = time <= lateLimit ? "มาปกติ" : "มาสาย";
+            row.present++;
+            if (status === "มาปกติ") row.normal++; else row.late++;
+            row.daysWithData++;
+          } else if (["ไม่มา","ลาป่วย","ลากิจ","ลาพักร้อน"].includes(saved)) {
+            status = saved;
+            row.daysWithData++;
+            if (saved === "ไม่มา") row.absent++;
+            if (saved === "ลาป่วย") row.sick++;
+            if (saved === "ลากิจ") row.personal++;
+            if (saved === "ลาพักร้อน") row.vacation++;
+          } else {
+            status = "ยังไม่ระบุ";
+            if (datesSet.has(date)) row.unspecified++;
+          }
+          detail.push([date, emp.fullname, emp.dept || "ไม่ระบุสังกัด", emp.type || "", emp.pos || "", status, time || "-"]);
+        });
+        return row;
+      });
+      return { month, dates, summary, detail };
+    }
+
+    function renderMonthlyReport() {
+      const monthInput = document.getElementById("monthlyReportMonth");
+      if (!monthInput) return;
+      if (!monthInput.value) monthInput.value = new Date().toISOString().slice(0,7);
+      const data = getMonthlyReportData(monthInput.value);
+      const sum = key => data.summary.reduce((n,r)=>n+r[key],0);
+      document.getElementById("monthlyKpiPeople").textContent = rosterData.length;
+      document.getElementById("monthlyKpiPresent").textContent = sum("present");
+      document.getElementById("monthlyKpiLate").textContent = sum("late");
+      document.getElementById("monthlyKpiAbsent").textContent = sum("absent");
+      document.getElementById("monthlyKpiLeave").textContent = sum("sick") + sum("personal") + sum("vacation");
+      const groups = new Map();
+      data.summary.forEach(r=>{
+        const dept=r.emp.dept||"ไม่ระบุสังกัด";
+        if(!groups.has(dept)) groups.set(dept,{dept,people:0,normal:0,late:0,absent:0,sick:0,personal:0,vacation:0,unspecified:0});
+        const g=groups.get(dept); g.people++; ["normal","late","absent","sick","personal","vacation","unspecified"].forEach(k=>g[k]+=r[k]);
+      });
+      const body=document.getElementById("monthlyReportDeptBody");
+      if(body) body.innerHTML=[...groups.values()].sort((a,b)=>a.dept.localeCompare(b.dept,"th")).map(g=>`<tr><td class="p-2 font-semibold">${String(g.dept).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[c]))}</td><td class="p-2 text-right">${g.people}</td><td class="p-2 text-right text-emerald-700">${g.normal}</td><td class="p-2 text-right text-amber-700">${g.late}</td><td class="p-2 text-right text-rose-700">${g.absent}</td><td class="p-2 text-right">${g.sick}</td><td class="p-2 text-right">${g.personal}</td><td class="p-2 text-right">${g.vacation}</td><td class="p-2 text-right text-slate-500">${g.unspecified}</td></tr>`).join("");
+    }
+
+    function exportMonthlyReport() {
+      const monthInput = document.getElementById("monthlyReportMonth");
+      const data = getMonthlyReportData(monthInput?.value || new Date().toISOString().slice(0,7));
+      const wb = XLSX.utils.book_new();
+      const summaryRows = [["ลำดับ","ประเภทบุคลากร","สังกัด/กอง","ชื่อ-นามสกุล","ตำแหน่ง","มาปกติ (วัน)","มาสาย (วัน)","ไม่มา (วัน)","ลาป่วย (วัน)","ลากิจ (วัน)","ลาพักร้อน (วัน)","ยังไม่ระบุสถานะ (วัน)","วันที่มีข้อมูล"]];
+      data.summary.forEach((r,i)=>summaryRows.push([i+1,r.emp.type||"",r.emp.dept||"ไม่ระบุสังกัด",r.emp.fullname,r.emp.pos||"",r.normal,r.late,r.absent,r.sick,r.personal,r.vacation,r.unspecified,r.daysWithData]));
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(summaryRows),"สรุปรายบุคคล");
+      const deptMap = new Map();
+      data.summary.forEach(r=>{const d=r.emp.dept||"ไม่ระบุสังกัด"; if(!deptMap.has(d))deptMap.set(d,{d,people:0,normal:0,late:0,absent:0,sick:0,personal:0,vacation:0,unspecified:0});const g=deptMap.get(d);g.people++;["normal","late","absent","sick","personal","vacation","unspecified"].forEach(k=>g[k]+=r[k]);});
+      const deptRows=[["สังกัด/กอง","จำนวนบุคลากร","มาปกติ (วัน)","มาสาย (วัน)","ไม่มา (วัน)","ลาป่วย (วัน)","ลากิจ (วัน)","ลาพักร้อน (วัน)","ยังไม่ระบุสถานะ (วัน)"]];
+      [...deptMap.values()].forEach(g=>deptRows.push([g.d,g.people,g.normal,g.late,g.absent,g.sick,g.personal,g.vacation,g.unspecified]));
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(deptRows),"สรุปแยกตามกอง");
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["วันที่","ชื่อ-นามสกุล","สังกัด/กอง","ประเภทบุคลากร","ตำแหน่ง","สถานะ","เวลาเข้าเช้า"],...data.detail]),"รายละเอียดรายวัน");
+      const filename=`รายงานเวลาเข้าออก_รายเดือน_${data.month}.xlsx`;
+      XLSX.writeFile(wb,filename);
+      showToast(`ส่งออกรายงานเดือน ${data.month} เรียบร้อยแล้ว`,"success");
     }
 
     function renderAll() {
@@ -1417,6 +1742,7 @@
         `;
         rawBody.appendChild(tr);
       });
+      renderDashboardInsights();
     }
 
     function bindDailyAttendanceStatusEvents() {
@@ -1540,7 +1866,9 @@
 
     function switchTab(activeId) {
       const tabs = [
+        { btn: "tabBtnDashboard", view: "viewDashboard" },
         { btn: "tabBtnDaily", view: "viewDaily" },
+        { btn: "tabBtnMonthly", view: "viewMonthly" },
         { btn: "tabBtnCat", view: "viewCat" },
         { btn: "tabBtnRaw", view: "viewRaw" },
         { btn: "tabBtnRoster", view: "viewRoster" },
@@ -1686,7 +2014,17 @@
       document.getElementById("searchEmp").addEventListener("input", renderAll);
       document.getElementById("filterRawDup").addEventListener("change", renderAll);
 
+      document.getElementById("btnDashThreeDayToggle").addEventListener("click", function() {
+        const details = document.getElementById("dashThreeDayDetails");
+        const isHidden = details.classList.toggle("hidden");
+        this.textContent = isHidden ? "ดูรายชื่อ" : "ซ่อนรายชื่อ";
+      });
+      document.getElementById("tabBtnDashboard").addEventListener("click", () => switchTab("tabBtnDashboard"));
       document.getElementById("tabBtnDaily").addEventListener("click", () => switchTab("tabBtnDaily"));
+      document.getElementById("tabBtnMonthly").addEventListener("click", () => { switchTab("tabBtnMonthly"); renderMonthlyReport(); });
+      document.getElementById("monthlyReportMonth").value = new Date().toISOString().slice(0,7);
+      document.getElementById("monthlyReportMonth").addEventListener("change", renderMonthlyReport);
+      document.getElementById("btnExportMonthly").addEventListener("click", exportMonthlyReport);
       document.getElementById("tabBtnCat").addEventListener("click", () => switchTab("tabBtnCat"));
       document.getElementById("tabBtnRaw").addEventListener("click", () => switchTab("tabBtnRaw"));
       document.getElementById("tabBtnRoster").addEventListener("click", () => switchTab("tabBtnRoster"));
