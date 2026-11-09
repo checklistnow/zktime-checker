@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบตรวจสอบเวลาเข้า-ออกงาน และเพิ่มรายชื่อบุคลากรอัตโนมัติเมื่อแนบไฟล์</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans Thai', 'Inter', sans-serif; background-color: #f1f5f9; color: #0f172a; }
+    .table-sticky th { position: sticky; top: 0; z-index: 10; }
+  </style>
+
+  <style id="dark-pro-dashboard-theme">
+    /* Dark Pro dashboard only: keep the rest of the app and data workflow unchanged. */
+    #viewDashboard { color:#e2e8f0; }
+    #viewDashboard > div,
+    #viewDashboard .dash-panel { background:linear-gradient(145deg,#111d32 0%,#0b1424 100%) !important; border-color:#243650 !important; color:#e2e8f0; box-shadow:0 12px 28px rgba(2,8,23,.22); }
+    #viewDashboard .dash-hero { position:relative; overflow:hidden; background:radial-gradient(ellipse at 85% 0%,rgba(37,99,235,.28),transparent 42%),linear-gradient(125deg,#101c31,#0b1220 68%,#111d32) !important; }
+    #viewDashboard .dash-hero:after { content:""; position:absolute; width:220px;height:220px;right:-90px;top:-115px;border:1px solid rgba(96,165,250,.18);border-radius:50%;box-shadow:0 0 0 28px rgba(96,165,250,.035),0 0 0 58px rgba(96,165,250,.025);pointer-events:none; }
+    #viewDashboard .dash-eyebrow { color:#7dd3fc; letter-spacing:.12em; text-transform:uppercase; }
+    #viewDashboard .dash-subtle, #viewDashboard .text-slate-500, #viewDashboard .text-slate-400 { color:#94a9c4 !important; }
+    #viewDashboard .text-slate-700, #viewDashboard .text-slate-600 { color:#d7e3f3 !important; }
+    #viewDashboard .text-\[\#1B365D\] { color:#e2e8f0 !important; }
+    #viewDashboard .dash-kpi { position:relative; min-height:112px; background:linear-gradient(145deg,rgba(23,39,62,.96),rgba(14,25,42,.98)) !important; border:1px solid #2a3d58 !important; border-radius:14px; padding:15px; transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
+    #viewDashboard .dash-kpi:hover { transform:translateY(-2px); border-color:#4775a9 !important; box-shadow:0 10px 22px rgba(2,8,23,.22); }
+    #viewDashboard .dash-kpi .dash-kpi-value { font-size:1.9rem; line-height:2.2rem; font-weight:750; letter-spacing:-.04em; }
+    #viewDashboard .dash-kpi .dash-kpi-icon { display:inline-flex; align-items:center; justify-content:center; width:30px;height:30px;border-radius:9px;background:rgba(96,165,250,.12);font-size:15px; }
+    #viewDashboard .dash-kpi-total .dash-kpi-value { color:#e2e8f0 !important; }
+    #viewDashboard .dash-kpi-green .dash-kpi-value { color:#6ee7b7 !important; }
+    #viewDashboard .dash-kpi-amber .dash-kpi-value { color:#fcd34d !important; }
+    #viewDashboard .dash-kpi-red .dash-kpi-value { color:#fda4af !important; }
+    #viewDashboard .dash-kpi-blue .dash-kpi-value { color:#93c5fd !important; }
+    #viewDashboard .dash-kpi-purple .dash-kpi-value { color:#c4b5fd !important; }
+    #viewDashboard .dash-subpanel { background:rgba(10,20,35,.55) !important; border:1px solid #263852 !important; border-radius:12px; }
+    #viewDashboard .dash-subpanel h3 { color:#e2e8f0 !important; }
+    #viewDashboard .bg-slate-100 { background-color:#1b2b42 !important; }
+    #viewDashboard #dashAttendanceBars .h-2 > div { transition:width .35s ease; }
+    #viewDashboard #dashTrend .bg-blue-600 { background:linear-gradient(90deg,#2563eb,#38bdf8) !important; }
+    #viewDashboard #dashAlerts button { background:rgba(18,31,51,.9) !important; border-color:#2a3d58 !important; color:#dbeafe !important; transition:transform .16s ease,border-color .16s ease,background .16s ease; }
+    #viewDashboard #dashAlerts button:hover { transform:translateX(2px); background:#1a2b45 !important; border-color:#5285bf !important; }
+    #viewDashboard #dashAlerts .dash-alert-amber { border-left:3px solid #fbbf24 !important; }
+    #viewDashboard #dashAlerts .dash-alert-red { border-left:3px solid #fb7185 !important; }
+    #viewDashboard #dashAlerts .dash-alert-purple { border-left:3px solid #a78bfa !important; }
+    #viewDashboard #dashAlerts .dash-alert-blue { border-left:3px solid #60a5fa !important; }
+    #viewDashboard #dashDeptBody tr { border-color:#263852 !important; }
+    #viewDashboard #dashDeptBody tr:nth-child(even) { background:rgba(30,48,72,.28); }
+    #viewDashboard #dashDeptBody td { color:#d7e3f3 !important; border-color:#263852 !important; }
+    #viewDashboard .dash-table-wrap { border:1px solid #263852; border-radius:10px; overflow:hidden; }
+    #viewDashboard .dash-table-head { background:#1a3150; color:#eaf2ff; }
+    #viewDashboard .dash-status-pill { display:inline-flex; align-items:center; gap:6px; border:1px solid #315071; border-radius:999px; padding:5px 9px; background:rgba(30,64,104,.35); color:#bfdbfe; font-size:11px; font-weight:700; }
+    #viewDashboard #dashThreeDayDetails .dash-three-day-row { background:rgba(10,20,35,.62); border:1px solid #2a3d58; border-radius:10px; padding:12px; }
+    #viewDashboard #dashThreeDayDetails .dash-three-day-name { color:#f8fafc; font-weight:700; }
+    #viewDashboard #dashThreeDayDetails .dash-three-day-meta { color:#9fb2cc; font-size:12px; }
+    #viewDashboard #dashThreeDayDetails .dash-three-day-status { color:#fecaca; background:rgba(127,29,29,.28); border:1px solid rgba(248,113,113,.25); border-radius:999px; padding:3px 8px; font-size:11px; font-weight:700; white-space:nowrap; }
+    @media (prefers-reduced-motion: reduce) { #viewDashboard *, #viewDashboard *:before, #viewDashboard *:after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
+  </style>
+
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Top Header & Action Buttons -->
+  <header class="bg-[#1B365D] text-white shadow-lg border-b border-blue-900">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="bg-emerald-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">✨ ระบบเช็คและเพิ่มคนเข้าทะเบียนอัตโนมัติทันทีเมื่อแนบไฟล์</span>
+          <span class="text-blue-200 text-xs">รองรับไฟล์ .xlsx / .xls / .xlsm / .csv จากเครื่องสแกนนิ้ว</span>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-bold mt-1">ระบบตรวจสอบเวลาเข้า-ออกงาน เช็คสแกนนิ้วซ้ำ และเพิ่มชื่อบุคลากรอัตโนมัติ</h1>
+        <p class="text-xs sm:text-sm text-blue-100 mt-0.5">เมื่อแนบไฟล์สแกนนิ้ว ระบบจะตรวจสอบรายชื่อทั้งหมด หากไม่พบในทะเบียนหลักจะเพิ่มชื่อเข้าทะเบียนให้อัตโนมัติทันทีพร้อมคำนวณเวลาเข้า-ออก</p>
+      </div>
+
+      <!-- Primary Clickable Import/Download Buttons -->
+      <div class="flex flex-wrap items-center gap-2">
+        <input type="file" id="fileInputAppend" accept=".xlsx,.xls,.xlsm,.csv" class="hidden" />
+        <input type="file" id="fileInputReplace" accept=".xlsx,.xls,.xlsm,.csv" class="hidden" />
+
+        <button id="btnImportAppend" type="button" class="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
+          <span>📂 1. กดนำเข้าไฟล์สแกนนิ้ว (เก็บประวัติ + เพิ่มคนใหม่อัตโนมัติ)</span>
+        </button>
+
+        <button id="btnImportReplace" type="button" class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-semibold text-sm px-4 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
+          <span>⚡ 2. กดนำเข้าไฟล์รายวัน (เช็คเฉพาะไฟล์นี้ + เพิ่มคนใหม่อัตโนมัติ)</span>
+        </button>
+
+        <button id="btnDownloadXlsm" type="button" class="bg-white hover:bg-blue-50 text-[#1B365D] font-semibold text-sm px-3.5 py-2.5 rounded-lg shadow flex items-center gap-1.5 border border-blue-200 transition">
+          <span>📥 ดาวน์โหลดไฟล์ Excel (.xlsm) รุ่นเพิ่มคนอัตโนมัติ</span>
+        </button>
+
+        <button id="btnExportXlsx" type="button" class="bg-blue-700 hover:bg-blue-600 text-white font-medium text-sm px-3.5 py-2.5 rounded-lg shadow flex items-center gap-1.5 border border-blue-500 transition">
+          <span>📊 ส่งออกผลตรวจเป็น Excel (.xlsx)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Toast Banner -->
+  <div id="toastBanner" class="hidden max-w-7xl mx-auto mt-3 px-4 w-full">
+    <div id="toastBox" class="rounded-lg px-4 py-3 text-sm font-medium flex items-center justify-between shadow-sm border">
+      <span id="toastText"></span>
+      <button id="btnCloseToast" type="button" class="text-xs underline ml-4 shrink-0">ปิด</button>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 py-4 flex-1 w-full space-y-4">
+    <!-- Control Bar: Date Selection, Time Thresholds, Demo Auto-Add & Duplicate Buttons -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+        <div>
+          <label for="selDate" class="block text-xs font-bold text-slate-700 mb-1">📅 วันที่ต้องการตรวจสอบหลัก (ดูย้อนหลัง)</label>
+          <input type="date" id="selDate" value="2026-10-14" class="w-full bg-amber-50 border-2 border-[#1B365D] rounded-lg px-3 py-1.5 text-sm font-bold text-[#1B365D]" />
+        </div>
+        <div>
+          <label for="QuickDateSelect" class="block text-xs font-semibold text-slate-600 mb-1">🗂️ เลือกจากวันที่ที่มีข้อมูลในระบบ</label>
+          <select id="QuickDateSelect" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-800"></select>
+        </div>
+        <div>
+          <label for="prevDate" class="block text-xs font-semibold text-slate-600 mb-1">⏪ วันที่เช็คเวลาออกเย็นย้อนหลัง (วันก่อน)</label>
+          <input type="date" id="prevDate" value="2026-10-13" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-700" />
+        </div>
+        <div>
+          <label for="lateTimeInput" class="block text-xs font-semibold text-slate-600 mb-1">⏰ เกณฑ์เข้างานเช้า (ปกติ ≤)</label>
+          <input type="time" id="lateTimeInput" value="08:30" step="60" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-800" />
+        </div>
+        <div>
+          <label for="outTimeInput" class="block text-xs font-semibold text-slate-600 mb-1">🕔 เกณฑ์ออกงานเย็น (ปกติ ≥)</label>
+          <input type="time" id="outTimeInput" value="16:30" step="60" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-800" />
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <button id="btnDemoNewPerson" type="button" class="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 font-semibold text-xs px-2.5 py-2 rounded-lg transition" title="จำลองแนบไฟล์ที่มีชื่อคนใหม่ที่ไม่อยู่ในทะเบียน เพื่อดูการทำงานของการเพิ่มชื่ออัตโนมัติ">
+            ✨ ทดลองแนบไฟล์มีคนใหม่
+          </button>
+          <button id="btnDemoDup" type="button" class="bg-orange-100 hover:bg-orange-200 text-orange-900 border border-orange-300 font-semibold text-xs px-2.5 py-2 rounded-lg transition" title="จำลองเพิ่มเวลาสแกนซ้ำและเวลาออกเย็นเพื่อทดสอบการแสดงผล">
+            🧪 จำลองสแกนซ้ำ
+          </button>
+          <button id="btnResetData" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-medium text-xs px-2.5 py-2 rounded-lg transition" title="คืนค่าข้อมูลตั้งต้น 14/10/2026">
+            ↺ รีเซ็ต
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Data backup and restore -->
+    <section class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <div class="font-bold text-amber-900 text-sm">🛡️ สำรองข้อมูลป้องกันประวัติหาย</div>
+        <p class="text-xs text-amber-800 mt-1">ข้อมูลเก็บในเบราว์เซอร์เครื่องนี้ กดสำรองข้อมูลเป็นไฟล์ JSON เก็บไว้ทุกครั้งหลังนำเข้า Excel</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="btnBackupData" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-2 text-xs font-bold">⬇️ สำรองข้อมูลทั้งหมด</button>
+        <button id="btnRestoreData" type="button" class="bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg px-3 py-2 text-xs font-bold">⬆️ กู้คืนข้อมูลสำรอง</button>
+        <input id="restoreDataFile" type="file" accept=".json,application/json" class="hidden" />
+      </div>
+    </section>
+
+    <!-- KPI Summary Cards -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+      <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
+        <div class="text-xs font-semibold text-slate-500">บุคลากรทั้งหมด</div>
+        <div id="kpiTotalEmp" class="text-2xl font-bold text-[#1B365D] mt-0.5">143</div>
+        <div class="text-[11px] text-slate-400">รายชื่อที่ระบบพบเพิ่ม</div>
+      </div>
+      <div class="bg-purple-50 rounded-xl p-3 border-2 border-purple-300 shadow-sm">
+        <div class="text-xs font-bold text-purple-800">✨ เพิ่มคนอัตโนมัติ</div>
+        <div id="kpiAutoAdded" class="text-2xl font-bold text-purple-700 mt-0.5">1</div>
+        <div class="text-[11px] text-purple-700">พบชื่อใหม่จากไฟล์สแกน</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-blue-200 shadow-sm">
+        <div class="text-xs font-semibold text-blue-700">สแกนเข้าเช้า</div>
+        <div id="kpiMorningIn" class="text-2xl font-bold text-blue-800 mt-0.5">135</div>
+        <div class="text-[11px] text-slate-400">มีเวลาเข้าช่วงเช้า</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-emerald-200 shadow-sm">
+        <div class="text-xs font-semibold text-emerald-700">มาทันเวลา</div>
+        <div id="kpiOnTime" class="text-2xl font-bold text-emerald-700 mt-0.5">132</div>
+        <div class="text-[11px] text-slate-400">ทันเกณฑ์เวลาเข้า</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-amber-200 shadow-sm">
+        <div class="text-xs font-semibold text-amber-700">มาสาย</div>
+        <div id="kpiLate" class="text-2xl font-bold text-amber-700 mt-0.5">3</div>
+        <div class="text-[11px] text-slate-400">หลังเกณฑ์เวลาเช้า</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-indigo-200 shadow-sm">
+        <div class="text-xs font-semibold text-indigo-700">สแกนออกเย็น</div>
+        <div id="kpiEveningOut" class="text-2xl font-bold text-indigo-800 mt-0.5">129</div>
+        <div class="text-[11px] text-slate-400">มีเวลาออกช่วงเย็น</div>
+      </div>
+      <div class="bg-orange-50 rounded-xl p-3 border-2 border-orange-300 shadow-sm">
+        <div class="text-xs font-bold text-orange-800">⚠️ พบคนสแกนซ้ำ</div>
+        <div id="kpiDupEmp" class="text-2xl font-bold text-orange-700 mt-0.5">2</div>
+        <div class="text-[11px] text-orange-700">สแกนเกิน 1 ครั้ง/กะ</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-rose-200 shadow-sm">
+        <div class="text-xs font-semibold text-rose-700">ไม่พบข้อมูลสแกน</div>
+        <div id="kpiMissing" class="text-2xl font-bold text-rose-700 mt-0.5">8</div>
+        <div class="text-[11px] text-slate-400">ขาดสแกนในวันนี้</div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="flex flex-wrap gap-2 border-b border-slate-300 pb-2">
+      <button id="tabBtnDashboard" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-[#1B365D] text-white shadow-sm">📊 0. Dashboard / แจ้งเตือน</button>
+      <button id="tabBtnDaily" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
+        📋 1. ตารางสรุปรายวันและเช็คย้อนหลัง (<span id="dailyCountBadge">143</span> คน)
+      </button>
+      <button id="tabBtnMonthly" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
+        📈 2. รายงานสรุปรายเดือน
+      </button>
+      <button id="tabBtnCat" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
+        🏛️ 2. สรุปแยกตามประเภทบุคลากรและกอง/สำนัก
+      </button>
+      <button id="tabBtnRaw" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
+        🕒 3. ข้อมูลสแกนดิบและรายการสแกนซ้ำ (<span id="rawCountBadge">267</span> รายการ)
+      </button>
+      <button id="tabBtnRoster" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300">
+        👥 4. ทะเบียนรายชื่อบุคลากร (<span id="rosterCountBadge">143</span> คน)
+      </button>
+      <button id="tabBtnExamples" type="button" class="px-4 py-2 rounded-lg text-sm font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 border border-amber-500 shadow-sm">
+        📖 5. ตัวอย่างไฟล์สแกนนิ้ว & กดทดลองใช้ (ครบ 5 แบบ)
+      </button>
+    </nav>
+
+    <!-- TAB 0: Dark Pro Dashboard, Alerts and Department Summary -->
+    <section id="viewDashboard" class="space-y-4">
+      <div class="dash-hero rounded-2xl shadow-xl border p-5 sm:p-6">
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+          <div>
+            <div class="dash-eyebrow text-[10px] font-bold mb-2">ATTENDANCE INTELLIGENCE · DARK PRO</div>
+            <h2 class="text-xl sm:text-2xl font-bold text-white">ภาพรวมการปฏิบัติงาน</h2>
+            <p class="dash-subtle text-xs sm:text-sm mt-1">สรุปจากข้อมูลสแกนและสถานะของวันที่เลือกด้านบน</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="dash-status-pill"><span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span> สรุปข้อมูลในระบบ</span>
+            <div class="rounded-xl border border-blue-400/20 bg-blue-950/40 px-4 py-2.5">
+              <div class="text-[10px] uppercase tracking-wider text-blue-200">วันที่ตรวจสอบ</div>
+              <div id="dashDateLabel" class="text-sm font-bold text-white mt-0.5">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3" id="dashKpis">
+          <div class="dash-kpi dash-kpi-total"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">บุคลากรทั้งหมด</div><span class="dash-kpi-icon">👥</span></div><div id="dashTotal" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">รายชื่อในทะเบียน</div></div>
+          <div class="dash-kpi dash-kpi-green"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">มาทันเวลา</div><span class="dash-kpi-icon">✓</span></div><div id="dashOnTime" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">ผ่านเกณฑ์เวลาเข้า</div></div>
+          <div class="dash-kpi dash-kpi-amber"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">มาสาย</div><span class="dash-kpi-icon">◷</span></div><div id="dashLate" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">หลังเวลาเกณฑ์</div></div>
+          <div class="dash-kpi dash-kpi-red"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">ขาดสแกนเช้า</div><span class="dash-kpi-icon">!</span></div><div id="dashMissingMorning" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">ต้องตรวจสอบ</div></div>
+          <div class="dash-kpi dash-kpi-blue"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">สแกนออกแล้ว</div><span class="dash-kpi-icon">↗</span></div><div id="dashOut" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">มีข้อมูลเวลาออก</div></div>
+          <div class="dash-kpi dash-kpi-purple"><div class="flex items-center justify-between gap-2"><div class="text-xs text-slate-400">ลา / ไม่มา</div><span class="dash-kpi-icon">◌</span></div><div id="dashLeave" class="dash-kpi-value mt-2">0</div><div class="text-[11px] text-slate-400 mt-1">บันทึกสถานะแล้ว</div></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <div class="dash-subpanel p-4"><div class="flex items-center justify-between gap-2 mb-4"><h3 class="font-bold text-sm">สัดส่วนการมาทำงาน</h3><span class="text-[10px] text-slate-400">ตามวันที่เลือก</span></div><div id="dashAttendanceBars" class="space-y-4"></div></div>
+          <div class="dash-subpanel p-4"><div class="flex items-center justify-between gap-2 mb-4"><h3 class="font-bold text-sm">แนวโน้มการสแกนเข้า</h3><span class="text-[10px] text-slate-400">7 วันที่มีข้อมูลล่าสุด</span></div><div id="dashTrend" class="space-y-3"></div><p class="text-[10px] text-slate-500 mt-3">แสดงเฉพาะวันที่มีข้อมูลจริงในระบบ</p></div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="dash-panel rounded-2xl shadow-lg border p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3 mb-4"><div><h2 class="font-bold text-white">🔔 รายการที่ควรตรวจสอบ</h2><p class="dash-subtle text-xs mt-1">กดรายการเพื่อเปิดตารางและกรองข้อมูล</p></div><span class="dash-status-pill">ตรวจสอบ</span></div>
+          <div id="dashAlerts" class="space-y-2"></div>
+        </div>
+        <div class="dash-panel rounded-2xl shadow-lg border p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3 mb-4"><div><h2 class="font-bold text-white">🏛️ สรุปแยกตามกอง / สำนัก</h2><p class="dash-subtle text-xs mt-1">เปรียบเทียบสถานะของแต่ละสังกัด</p></div><span class="dash-status-pill">รายหน่วยงาน</span></div>
+          <div class="dash-table-wrap overflow-x-auto"><table class="w-full text-xs"><thead><tr class="dash-table-head"><th class="p-2.5 text-left">กอง / สำนัก</th><th class="p-2.5 text-right">ทั้งหมด</th><th class="p-2.5 text-right">ทันเวลา</th><th class="p-2.5 text-right">สาย</th><th class="p-2.5 text-right">ขาดเช้า</th><th class="p-2.5 text-right">ลา/ไม่มา</th></tr></thead><tbody id="dashDeptBody" class="divide-y"></tbody></table></div>
+        </div>
+      </div>
+      <div class="dash-panel rounded-2xl shadow-lg border p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-start gap-3">
+            <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-400/20 text-xl">⚠️</div>
+            <div><h2 class="font-bold text-white">ขาดงาน / ลาติดต่อกัน 3 วัน</h2><p class="dash-subtle text-xs mt-1">ตรวจจากสถานะที่บันทึกไว้ในแต่ละวัน ไม่รวมวันที่สแกนเข้าแล้วถูกล็อกสถานะเป็น “มา”</p></div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="dash-status-pill"><span id="dashThreeDayCount" class="font-bold">0</span> คนที่ต้องติดตาม</span>
+            <button id="btnDashThreeDayToggle" type="button" class="rounded-lg border border-blue-400/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-100 px-3 py-2 text-xs font-bold transition">ดูรายชื่อ</button>
+          </div>
+        </div>
+        <div id="dashThreeDayDetails" class="hidden mt-4">
+          <div id="dashThreeDayList" class="space-y-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 1: Daily & Historical Attendance Table -->
+    <section id="viewDaily" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="filterType" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
+            <option value="ALL">ทุกประเภทบุคลากร</option>
+            <option value="พนักงานเทศบาล">พนักงานเทศบาล</option>
+            <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
+            <option value="พนักงานจ้างตามภารกิจ">พนักงานจ้างตามภารกิจ</option>
+            <option value="พนักงานจ้างทั่วไป">พนักงานจ้างทั่วไป</option>
+          </select>
+
+          <select id="filterDept" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
+            <option value="ALL">ทุกสังกัด / สำนัก / กอง</option>
+            <option value="ผู้บริหารท้องถิ่น">ผู้บริหารท้องถิ่น</option>
+            <option value="สำนักปลัดเทศบาล">สำนักปลัดเทศบาล</option>
+            <option value="กองคลัง">กองคลัง</option>
+            <option value="กองช่าง">กองช่าง</option>
+            <option value="กองสาธารณสุขและสิ่งแวดล้อม">กองสาธารณสุขและสิ่งแวดล้อม</option>
+            <option value="กองการศึกษา">กองการศึกษา</option>
+            <option value="กองสวัสดิการสังคม">กองสวัสดิการสังคม</option>
+            <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)">✨ ยังไม่ระบุกอง</option>
+          </select>
+
+          <select id="filterStatus" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
+            <option value="ALL">ทุกสถานะการสแกน</option>
+            <option value="AUTO_ADDED">✨ เฉพาะคนที่ระบบเพิ่มชื่อให้อัตโนมัติ</option>
+            <option value="SCANNED">สแกนแล้วทั้งหมด</option>
+            <option value="DUP">⚠️ เฉพาะคนสแกนซ้ำ (สแกนซ้ำ)</option>
+            <option value="LATE">เฉพาะคนมาสาย</option>
+            <option value="MISSING">เฉพาะคนยังไม่พบข้อมูลสแกน</option>
+          </select>
+        </div>
+
+        
+        <div class="flex flex-wrap gap-2 mt-2 sm:mt-0 w-full sm:w-auto sm:ml-auto">
+          <button id="btnPrintAll" type="button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition flex items-center gap-1">🖨️ ปริ้นทั้งหมด</button>
+          <button id="btnPrintPresent" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition flex items-center gap-1">🖨️ ปริ้นคนมา</button>
+          <button id="btnPrintAbsent" type="button" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition flex items-center gap-1">🖨️ ปริ้นคนไม่มา</button>
+        </div>
+
+        <div class="w-full sm:w-64">
+          <input type="text" id="searchEmp" placeholder="🔍 ค้นหาชื่อ-สกุล หรือตำแหน่ง..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs" />
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-500 mb-2">ถ้ามีสแกนเช้า ระบบล็อกสถานะเป็น “มา” อัตโนมัติ (ไม่ว่าจะทันเวลาหรือมาสาย) หากขาดสแกนเช้าให้เลือกสถานะเองได้: มา / ไม่มา / ลาป่วย / ลากิจ / ลาพักร้อน (บันทึกแยกตามวันที่) ส่วนคนลาออกให้กด “ทำเครื่องหมายลาออก” ในทะเบียนบุคลากร ระบบจะนำออกจากรายชื่อปัจจุบันแต่เก็บประวัติสแกนเก่าไว้</p>
+      <div class="overflow-x-auto max-h-[540px] border border-slate-200 rounded-lg">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="bg-[#1B365D] text-white table-sticky">
+              <th class="py-2.5 px-2.5 text-center">#</th>
+              <th class="py-2.5 px-2.5">ประเภทบุคลากร (ราชการ)</th>
+              <th class="py-2.5 px-2.5">สังกัด/กอง</th>
+              <th class="py-2.5 px-2.5">ชื่อ-นามสกุล</th>
+              <th class="py-2.5 px-2.5 text-center">สถานะรายวัน</th>
+              <th class="py-2.5 px-2.5">ตำแหน่งสายงาน</th>
+              <th class="py-2.5 px-2.5 text-center">เวลาเข้า (เช้า)</th>
+              <th class="py-2.5 px-2.5 text-center">สถานะเช้า</th>
+              <th class="py-2.5 px-2.5 text-center">เวลาออก (เย็น)</th>
+              <th class="py-2.5 px-2.5 text-center">สถานะเย็น</th>
+              <th class="py-2.5 px-2.5 text-center">เช้า/เย็น (ครั้ง)</th>
+              <th class="py-2.5 px-2.5 text-center bg-orange-700">เช็คสแกนซ้ำ</th>
+              <th class="py-2.5 px-2.5 text-center">สรุปผลตรวจ</th>
+              <th class="py-2.5 px-2.5 text-center bg-slate-700">เวลาออกเย็น (วันก่อน)</th>
+            </tr>
+          </thead>
+          <tbody id="dailyTableBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB Monthly: Summary report -->
+    <section id="viewMonthly" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5 space-y-4">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-[#1B365D]">รายงานสรุปการมาปฏิบัติงานรายเดือน</h2>
+          <p class="text-xs text-slate-500 mt-1">รายงานจากประวัติสแกนและสถานะรายวันที่บันทึกไว้ เลือกเดือนเพื่อส่งออก Excel</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <label for="monthlyReportMonth" class="text-sm font-semibold text-slate-700">เดือนที่รายงาน</label>
+          <input id="monthlyReportMonth" type="month" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <button id="btnExportMonthly" type="button" class="rounded-lg bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 text-sm font-bold">ส่งออก Excel รายเดือน</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3" id="monthlyReportKpis">
+        <div class="rounded-lg border p-3"><div class="text-xs text-slate-500">บุคลากรในทะเบียน</div><div id="monthlyKpiPeople" class="text-2xl font-bold text-slate-800">0</div></div>
+        <div class="rounded-lg border p-3"><div class="text-xs text-slate-500">วันมาปฏิบัติงาน</div><div id="monthlyKpiPresent" class="text-2xl font-bold text-emerald-700">0</div></div>
+        <div class="rounded-lg border p-3"><div class="text-xs text-slate-500">วันมาสาย</div><div id="monthlyKpiLate" class="text-2xl font-bold text-amber-700">0</div></div>
+        <div class="rounded-lg border p-3"><div class="text-xs text-slate-500">วันไม่มา</div><div id="monthlyKpiAbsent" class="text-2xl font-bold text-rose-700">0</div></div>
+        <div class="rounded-lg border p-3"><div class="text-xs text-slate-500">วันลา (ทุกประเภท)</div><div id="monthlyKpiLeave" class="text-2xl font-bold text-indigo-700">0</div></div>
+      </div>
+      <div class="overflow-x-auto border border-slate-200 rounded-lg">
+        <table class="w-full text-xs border-collapse">
+          <thead><tr class="bg-[#1B365D] text-white"><th class="p-2 text-left">สังกัด/กอง</th><th class="p-2 text-right">บุคลากร</th><th class="p-2 text-right">มาปกติ</th><th class="p-2 text-right">มาสาย</th><th class="p-2 text-right">ไม่มา</th><th class="p-2 text-right">ลาป่วย</th><th class="p-2 text-right">ลากิจ</th><th class="p-2 text-right">ลาพักร้อน</th><th class="p-2 text-right">ยังไม่ระบุ</th></tr></thead>
+          <tbody id="monthlyReportDeptBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+      <p class="text-xs text-slate-500">หมายเหตุ: รายงานจะนับเฉพาะวันที่มีข้อมูลสแกนหรือมีการบันทึกสถานะไว้ และจะไม่สรุปวันที่ไม่มีข้อมูลว่าเป็นวันขาดงานโดยอัตโนมัติ</p>
+    </section>
+
+    <!-- TAB 2: Category & Department Breakdown -->
+    <section id="viewCat" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <h2 class="text-sm font-bold text-[#1B365D] mb-3">1. สรุปการสแกนแยกตามประเภทบุคลากรตามระบบราชการ</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse">
+            <thead>
+              <tr class="bg-[#1B365D] text-white">
+                <th class="p-2 text-left">ประเภทบุคลากร</th>
+                <th class="p-2 text-right">ทั้งหมด</th>
+                <th class="p-2 text-right">เข้าเช้า</th>
+                <th class="p-2 text-right">ทันเวลา</th>
+                <th class="p-2 text-right">มาสาย</th>
+                <th class="p-2 text-right">ออกเย็น</th>
+                <th class="p-2 text-right bg-orange-700">สแกนซ้ำ</th>
+                <th class="p-2 text-right">ไม่พบสแกน</th>
+              </tr>
+            </thead>
+            <tbody id="catSummaryBody" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <h2 class="text-sm font-bold text-[#1B365D] mb-3">2. สรุปการสแกนแยกตามสังกัด / สำนัก / กอง</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse">
+            <thead>
+              <tr class="bg-[#1B365D] text-white">
+                <th class="p-2 text-left">สังกัด / กอง</th>
+                <th class="p-2 text-right">ทั้งหมด</th>
+                <th class="p-2 text-right">เข้าเช้า</th>
+                <th class="p-2 text-right">ทันเวลา</th>
+                <th class="p-2 text-right">มาสาย</th>
+                <th class="p-2 text-right">ออกเย็น</th>
+                <th class="p-2 text-right bg-orange-700">สแกนซ้ำ</th>
+                <th class="p-2 text-right">ไม่พบสแกน</th>
+              </tr>
+            </thead>
+            <tbody id="deptSummaryBody" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Raw Scan Records & Duplicate Scan Inspector -->
+    <section id="viewRaw" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-sm font-bold text-[#1B365D]">รายการข้อมูลสแกนนิ้วดิบทั้งหมดในระบบ และผลตรวจบรรทัดที่สแกนซ้ำ</h2>
+          <p class="text-xs text-slate-500">หากมีชื่อในไฟล์สแกนที่ไม่อยู่ในทะเบียนหลัก ระบบจะเพิ่มเข้าทะเบียนหลักให้อัตโนมัติทันทีและติดป้าย ✨ เพิ่มชื่ออัตโนมัติ</p>
+        </div>
+        <select id="filterRawDup" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700">
+          <option value="ALL">แสดงทุกบรรทัดสแกน</option>
+          <option value="DUP">⚠️ เฉพาะบรรทัดที่ขึ้น "สแกนซ้ำ"</option>
+          <option value="AUTO_ADDED">✨ เฉพาะบรรทัดของคนที่เพิ่มเข้าทะเบียนอัตโนมัติ</option>
+        </select>
+      </div>
+      <div class="overflow-x-auto max-h-[500px] border border-slate-200 rounded-lg">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="bg-slate-800 text-white table-sticky">
+              <th class="p-2 text-center">#</th>
+              <th class="p-2">ประเภทในไฟล์ดิบ</th>
+              <th class="p-2">ชื่อในไฟล์ดิบ</th>
+              <th class="p-2">วัน/เวลาสแกน</th>
+              <th class="p-2">วันที่</th>
+              <th class="p-2">เวลา</th>
+              <th class="p-2">ช่วงเวลา</th>
+              <th class="p-2">ประเภทตามระบบราชการ</th>
+              <th class="p-2">สังกัด/กอง</th>
+              <th class="p-2 text-center">ครั้งที่ในกะ</th>
+              <th class="p-2 text-center bg-orange-700">ผลตรวจสแกนซ้ำ</th>
+            </tr>
+          </thead>
+          <tbody id="rawTableBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 4: Master Roster & Alias Manager -->
+    <section id="viewRoster" class="hidden space-y-4">
+      <!-- Manual Add Person Quick Form -->
+      <div class="bg-purple-50 rounded-xl shadow-sm border border-purple-200 p-4">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-bold text-purple-900">➕ เพิ่มรายชื่อบุคลากรด้วยตนเอง (นอกเหนือจากการเพิ่มอัตโนมัติเมื่อแนบไฟล์)</h3>
+            <p class="text-xs text-purple-700">ปกติเมื่อแนบไฟล์สแกนนิ้ว ระบบจะเช็คและเพิ่มคนที่ยังไม่มีในรายชื่อให้อัตโนมัติอยู่แล้ว แต่สามารถเพิ่มล่วงหน้าหรือแก้ไขสังกัด/ตำแหน่งในตารางด้านล่างได้ตลอดเวลา</p>
+          </div>
+          <div class="flex flex-wrap items-end gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">ชื่อ-นามสกุล</label>
+              <input type="text" id="manualFullname" placeholder="เช่น นายสมชาย ใจดี" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs w-44" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">ประเภทบุคลากร</label>
+              <select id="manualType" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800">
+                <option value="พนักงานจ้างทั่วไป">พนักงานจ้างทั่วไป</option>
+                <option value="พนักงานจ้างตามภารกิจ">พนักงานจ้างตามภารกิจ</option>
+                <option value="พนักงานเทศบาล">พนักงานเทศบาล</option>
+                <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">สังกัด/กอง</label>
+              <select id="manualDept" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800">
+                <option value="สำนักปลัดเทศบาล">สำนักปลัดเทศบาล</option>
+                <option value="กองคลัง">กองคลัง</option>
+                <option value="กองช่าง">กองช่าง</option>
+                <option value="กองสาธารณสุขและสิ่งแวดล้อม">กองสาธารณสุขและสิ่งแวดล้อม</option>
+                <option value="กองการศึกษา">กองการศึกษา</option>
+                <option value="กองสวัสดิการสังคม">กองสวัสดิการสังคม</option>
+                <option value="ผู้บริหารท้องถิ่น">ผู้บริหารท้องถิ่น</option>
+                <option value="ไม่ระบุสังกัด (เพิ่มอัตโนมัติ)">ยังไม่ระบุกอง</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-purple-900 mb-0.5">ตำแหน่ง</label>
+              <input type="text" id="manualPos" placeholder="เช่น คนงาน" class="bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs w-36" />
+            </div>
+            <button id="btnManualAddPerson" type="button" class="bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg shadow transition">
+              + เพิ่มเข้าทะเบียน
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+          <h2 class="text-sm font-bold text-[#1B365D] mb-2">ทะเบียนรายชื่อบุคลากร (คลิกเปลี่ยนประเภท/สังกัด/ตำแหน่งได้ทันที)</h2>
+          <div class="overflow-x-auto max-h-[460px] border border-slate-200 rounded-lg">
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="bg-[#1B365D] text-white table-sticky">
+                  <th class="p-2">#</th>
+                  <th class="p-2">ประเภทบุคลากร</th>
+                  <th class="p-2">สังกัด/กอง</th>
+                  <th class="p-2">ชื่อ-นามสกุลเต็ม</th>
+                  <th class="p-2">ตำแหน่ง</th>
+                  <th class="p-2 text-center">ที่มา</th>
+                  <th class="p-2 text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="rosterTableBody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+          <h2 class="text-sm font-bold text-[#1B365D]">ตารางเทียบชื่อสะกดต่าง (ชื่อเทียบ 15 คู่)</h2>
+          <div class="overflow-x-auto max-h-[460px] border border-slate-200 rounded-lg">
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-800 text-white table-sticky">
+                  <th class="p-2 text-left">ชื่อในไฟล์ดิบ</th>
+                  <th class="p-2 text-left">ชื่อในทะเบียนหลัก</th>
+                </tr>
+              </thead>
+              <tbody id="aliasTableBody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: Interactive Examples & Sample Formats Gallery -->
+    <section id="viewExamples" class="hidden space-y-4">
+      <div class="bg-gradient-to-r from-[#1B365D] to-blue-800 text-white rounded-xl p-5 shadow-md flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <span class="bg-amber-400 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">คู่มือตัวอย่างการใช้งานจริง</span>
+          <h2 class="text-lg sm:text-xl font-bold mt-1.5">ตัวอย่างรูปแบบไฟล์สแกนนิ้วที่ใช้แนบได้ทั้ง 5 รูปแบบ & สถานการณ์การตรวจสอบ</h2>
+          <p class="text-xs sm:text-sm text-blue-100 mt-1">คลิกปุ่ม <strong>"🚀 กดทดลองจำลองข้อมูลชุดนี้"</strong> เพื่อดูผลลัพธ์การทำงานทันทีในหน้าตารางหลัก หรือกด <strong>"📥 ดาวน์โหลดไฟล์ .xlsx ตัวอย่าง"</strong> เพื่อนำไปทดสอบกดปุ่มนำเข้าไฟล์</p>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <button id="btnDownloadAllExamplesXlsx" type="button" class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
+            <span>📦 ดาวน์โหลดไฟล์รวมตัวอย่างทั้ง 5 แบบ (.xlsx)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 5 Interactive Example Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Example 1 -->
+        <div class="bg-white rounded-xl shadow-sm border-2 border-emerald-200 p-4 flex flex-col justify-between space-y-3">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="bg-emerald-100 text-emerald-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 1 • มาตรฐานเครื่องสแกนนิ้วทั่วไป (3 คอลัมน์)</span>
+              <span class="text-xs text-slate-500 font-mono">วันที่ตัวอย่าง: 2026-10-15</span>
+            </div>
+            <h3 class="text-sm font-bold text-[#1B365D]">สแกนเข้าเช้า + สแกนออกเย็นครบถ้วน / เช็คคนมาสายและออกก่อนเวลา</h3>
+            <p class="text-xs text-slate-600">ใช้เมื่อส่งออกไฟล์จากเครื่องสแกนนิ้วที่มี <strong>ตำแหน่ง/ประเภท</strong>, <strong>ชื่อ-สกุล</strong> และ <strong>วัน/เวลา</strong> ทั้งรอบเช้าและรอบเย็นในชีตเดียวกัน</p>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-[11px] text-left border-collapse">
+                <thead class="bg-slate-100 text-slate-700">
+                  <tr><th class="p-1.5 border-b">ตำแหน่ง</th><th class="p-1.5 border-b">ชื่อ-สกุล</th><th class="p-1.5 border-b">วัน/เวลา</th><th class="p-1.5 border-b">ผลลัพธ์ที่ระบบตรวจให้</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-mono">
+                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล/ลูกจ้างประจำ</td><td class="p-1.5 font-sans font-semibold">พันจ่าเอกสยาม แพทยารักษ์</td><td class="p-1.5">2026-10-15 08:12:10</td><td class="p-1.5 font-sans text-emerald-700 font-semibold">เข้าปกติ + ออกปกติ (16:40)</td></tr>
+                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล/ลูกจ้างประจำ</td><td class="p-1.5 font-sans font-semibold">ต้นกัญญา รัตนาวดี</td><td class="p-1.5">2026-10-15 08:42:19</td><td class="p-1.5 font-sans text-amber-700 font-semibold">มาสาย (>08:30)</td></tr>
+                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล/ลูกจ้างประจำ</td><td class="p-1.5 font-sans font-semibold">พิชาวีร์ เอมดวง</td><td class="p-1.5">2026-10-15 16:10:00</td><td class="p-1.5 font-sans text-amber-700 font-semibold">ออกก่อนเวลา (<16:30)</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <button type="button" data-ex-id="1" class="btn-run-example flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
+              🚀 กดทดลองจำลองแบบที่ 1 (ดูผลในตารางทันที)
+            </button>
+            <button type="button" data-ex-dl="1" class="btn-dl-example bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-medium text-xs px-3 py-2 rounded-lg transition">
+              📥 ดาวน์โหลดไฟล์ตัวอย่างแบบที่ 1 (.xlsx)
+            </button>
+          </div>
+        </div>
+
+        <!-- Example 2 -->
+        <div class="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 flex flex-col justify-between space-y-3">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="bg-purple-100 text-purple-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 2 • มีคนใหม่ไม่อยู่ในทะเบียน + สแกนนิ้วซ้ำ + ชื่อสะกดต่าง</span>
+              <span class="text-xs text-slate-500 font-mono">วันที่ตัวอย่าง: 2026-10-16</span>
+            </div>
+            <h3 class="text-sm font-bold text-[#1B365D]">ระบบเพิ่มคนใหม่เข้าทะเบียนอัตโนมัติ (✨) + แจ้งเตือนสแกนซ้ำ (⚠️)</h3>
+            <p class="text-xs text-slate-600">เมื่อแนบไฟล์ที่มีชื่อพนักงานใหม่ที่ยังไม่มีในทะเบียน ระบบจะเพิ่มเข้าทะเบียนให้อัตโนมัติทันที พร้อมจับคู่ชื่อที่สะกดต่าง 15 คู่ และตรวจคนกดสแกนนิ้วซ้ำหลายครั้ง</p>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-[11px] text-left border-collapse">
+                <thead class="bg-slate-100 text-slate-700">
+                  <tr><th class="p-1.5 border-b">ตำแหน่ง</th><th class="p-1.5 border-b">ชื่อ-สกุลในไฟล์สแกน</th><th class="p-1.5 border-b">วัน/เวลา</th><th class="p-1.5 border-b">ผลลัพธ์อัตโนมัติ</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-mono">
+                  <tr class="bg-purple-50/60"><td class="p-1.5 font-sans">พนักงานจ้างตามภารกิจ</td><td class="p-1.5 font-sans font-bold text-purple-900">นางสาวกมลชนก รุ่งเรืองกิจ</td><td class="p-1.5">2026-10-16 07:50:12</td><td class="p-1.5 font-sans text-purple-800 font-bold">✨ เพิ่มชื่อเข้าทะเบียนอัตโนมัติ</td></tr>
+                  <tr class="bg-orange-50/60"><td class="p-1.5 font-sans">พนักงานเทศบาล/ลูกจ้างประจำ</td><td class="p-1.5 font-sans font-bold text-orange-900">พันจ่าเอกสยาม แพทยารักษ์</td><td class="p-1.5">08:05 / 08:06 (2 ครั้ง)</td><td class="p-1.5 font-sans text-orange-800 font-bold">⚠️ แจ้งเตือนสแกนซ้ำ (เช้า 2 ครั้ง)</td></tr>
+                  <tr><td class="p-1.5 font-sans">พนักงานจ้างทั่วไป</td><td class="p-1.5 font-sans font-semibold">บุณยานุช ชัยชาญ</td><td class="p-1.5">2026-10-16 07:45:00</td><td class="p-1.5 font-sans text-blue-800 font-semibold">🔗 เทียบชื่อตรงกับ น.ส.บุณยานุช ชัยชายเรืองหิรัญ</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <button type="button" data-ex-id="2" class="btn-run-example flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
+              🚀 กดทดลองจำลองแบบที่ 2 (ดูคนใหม่ + สแกนซ้ำ)
+            </button>
+            <button type="button" data-ex-dl="2" class="btn-dl-example bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-medium text-xs px-3 py-2 rounded-lg transition">
+              📥 ดาวน์โหลดไฟล์ตัวอย่างแบบที่ 2 (.xlsx)
+            </button>
+          </div>
+        </div>
+
+        <!-- Example 3 -->
+        <div class="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 flex flex-col justify-between space-y-3">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="bg-blue-100 text-blue-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 3 • ไฟล์แบบย่อ มีเฉพาะ ชื่อ-สกุล และ วัน/เวลา (2 คอลัมน์)</span>
+              <span class="text-xs text-slate-500 font-mono">วันที่ตัวอย่าง: 2026-10-17</span>
+            </div>
+            <h3 class="text-sm font-bold text-[#1B365D]">ไม่ต้องมีคอลัมน์ตำแหน่ง ระบบดึงสังกัดและตำแหน่งจากทะเบียนหลักให้อัตโนมัติ</h3>
+            <p class="text-xs text-slate-600">ใช้เมื่อไฟล์จากเครื่องสแกนมีแค่ 2 คอลัมน์ (ชื่อ-สกุล และ วัน/เวลาแบบ <code>DD/MM/YYYY HH:MM:SS</code>) ระบบจะค้นหาประเภทบุคลากรและกอง/สำนักให้เอง</p>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-[11px] text-left border-collapse">
+                <thead class="bg-slate-100 text-slate-700">
+                  <tr><th class="p-1.5 border-b">ชื่อ-สกุล (คอลัมน์ A)</th><th class="p-1.5 border-b">วัน/เวลาสแกน (คอลัมน์ B)</th><th class="p-1.5 border-b">การดึงข้อมูลของระบบ</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-mono">
+                  <tr><td class="p-1.5 font-sans font-semibold">พันจ่าเอกสยาม แพทยารักษ์</td><td class="p-1.5">17/10/2026 08:02:15</td><td class="p-1.5 font-sans text-blue-700">ดึงสังกัด "ผู้บริหารท้องถิ่น" อัตโนมัติ</td></tr>
+                  <tr><td class="p-1.5 font-sans font-semibold">นายธนะชัย แสนสุขสกุลชล</td><td class="p-1.5">17/10/2026 08:09:45</td><td class="p-1.5 font-sans text-blue-700">ดึงสังกัด "กองช่าง" อัตโนมัติ</td></tr>
+                  <tr class="bg-purple-50/60"><td class="p-1.5 font-sans font-bold text-purple-900">นางสาวอารยา สุขสวัสดิ์ (คนใหม่)</td><td class="p-1.5">17/10/2026 08:00:05</td><td class="p-1.5 font-sans text-purple-800 font-bold">✨ เพิ่มเข้าทะเบียนเป็นพนักงานจ้างทั่วไป</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <button type="button" data-ex-id="3" class="btn-run-example flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
+              🚀 กดทดลองจำลองแบบที่ 3 (ไฟล์ 2 คอลัมน์)
+            </button>
+            <button type="button" data-ex-dl="3" class="btn-dl-example bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-medium text-xs px-3 py-2 rounded-lg transition">
+              📥 ดาวน์โหลดไฟล์ตัวอย่างแบบที่ 3 (.xlsx)
+            </button>
+          </div>
+        </div>
+
+        <!-- Example 4 -->
+        <div class="bg-white rounded-xl shadow-sm border-2 border-amber-200 p-4 flex flex-col justify-between space-y-3">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="bg-amber-100 text-amber-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 4 • แยกคอลัมน์ ชื่อ / นามสกุล + ปี พ.ศ. 2569 (4 คอลัมน์)</span>
+              <span class="text-xs text-slate-500 font-mono">วันที่ตัวอย่าง: 18/10/2569 (2026-10-18)</span>
+            </div>
+            <h3 class="text-sm font-bold text-[#1B365D]">รวมชื่อ-นามสกุลให้อัตโนมัติ และแปลงปี พ.ศ. 2569 เป็น ค.ศ. 2026 ทันที</h3>
+            <p class="text-xs text-slate-600">ใช้เมื่อโปรแกรมสแกนนิ้วแยกคอลัมน์ <strong>ชื่อ</strong> กับ <strong>นามสกุล</strong> ออกจากกัน หรือส่งออกวันที่เป็นปี พ.ศ. (เช่น <code>18/10/2569 07:58:12</code>)</p>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-[11px] text-left border-collapse">
+                <thead class="bg-slate-100 text-slate-700">
+                  <tr><th class="p-1.5 border-b">ประเภท</th><th class="p-1.5 border-b">ชื่อ</th><th class="p-1.5 border-b">นามสกุล</th><th class="p-1.5 border-b">วัน/เวลา (พ.ศ.)</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-mono">
+                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล</td><td class="p-1.5 font-sans font-semibold">พันจ่าเอกสยาม</td><td class="p-1.5 font-sans font-semibold">แพทยารักษ์</td><td class="p-1.5">18/10/2569 07:58:12</td></tr>
+                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล</td><td class="p-1.5 font-sans font-semibold">นางสาวกันตา</td><td class="p-1.5 font-sans font-semibold">ธวาบุญรัศมี</td><td class="p-1.5">18/10/2569 08:11:34</td></tr>
+                  <tr class="bg-purple-50/60"><td class="p-1.5 font-sans">พนักงานจ้างตามภารกิจ</td><td class="p-1.5 font-sans font-bold text-purple-900">นายณัฐวุฒิ</td><td class="p-1.5 font-sans font-bold text-purple-900">เจริญสุข (คนใหม่)</td><td class="p-1.5">18/10/2569 07:49:30</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <button type="button" data-ex-id="4" class="btn-run-example flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-3 py-2 rounded-lg shadow-sm transition">
+              🚀 กดทดลองจำลองแบบที่ 4 (แยกชื่อ-สกุล + ปี พ.ศ.)
+            </button>
+            <button type="button" data-ex-dl="4" class="btn-dl-example bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-medium text-xs px-3 py-2 rounded-lg transition">
+              📥 ดาวน์โหลดไฟล์ตัวอย่างแบบที่ 4 (.xlsx)
+            </button>
+          </div>
+        </div>
+
+        <!-- Example 5 (Full width) -->
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border-2 border-indigo-200 p-4 flex flex-col justify-between space-y-3">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="bg-indigo-100 text-indigo-900 text-xs font-bold px-2.5 py-1 rounded-full">แบบที่ 5 • แยกคอลัมน์ "วันที่" และ "เวลา" คนละคอลัมน์ + เช็คเวลาออกเย็นย้อนหลังข้ามวัน</span>
+              <span class="text-xs text-slate-500 font-mono">วันที่ตัวอย่าง: 2026-10-18 และ 2026-10-19</span>
+            </div>
+            <h3 class="text-sm font-bold text-[#1B365D]">รองรับไฟล์ที่แยกคอลัมน์ วันที่ (Date) กับ เวลา (Time) และใช้ตรวจสอบเวลาออกงานเย็นของเมื่อวานควบคู่กับเวลาเข้าเช้าวันนี้</h3>
+            <p class="text-xs text-slate-600">เหมาะสำหรับกรณีที่ตรวจเช็คตอนเช้าของวันที่ <strong>19/10/2026</strong> (ซึ่งทุกคนเพิ่งสแกนเข้างานเช้า ยังไม่มีเวลาออกเย็นของวันนี้) แต่ต้องการดูในคอลัมน์ขวาสุดของตารางว่า <strong>เมื่อวานเย็น (18/10/2026)</strong> แต่ละคนสแกนออกงานกี่โมง</p>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-[11px] text-left border-collapse">
+                <thead class="bg-slate-100 text-slate-700">
+                  <tr><th class="p-1.5 border-b">ตำแหน่ง</th><th class="p-1.5 border-b">ชื่อ-สกุล</th><th class="p-1.5 border-b">วันที่ (คอลัมน์ C)</th><th class="p-1.5 border-b">เวลา (คอลัมน์ D)</th><th class="p-1.5 border-b">การแสดงผลในตารางหลัก</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-mono">
+                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล</td><td class="p-1.5 font-sans font-semibold">พันจ่าเอกสยาม แพทยารักษ์</td><td class="p-1.5">2026-10-18</td><td class="p-1.5">16:45:10</td><td class="p-1.5 font-sans text-slate-700">แสดงในคอลัมน์ <strong>"เวลาออกเย็น (วันก่อน)"</strong></td></tr>
+                  <tr><td class="p-1.5 font-sans">พนักงานเทศบาล</td><td class="p-1.5 font-sans font-semibold">พันจ่าเอกสยาม แพทยารักษ์</td><td class="p-1.5">2026-10-19</td><td class="p-1.5">08:04:22</td><td class="p-1.5 font-sans text-emerald-700 font-semibold">แสดงในคอลัมน์ <strong>"เวลาเข้า (เช้า)"</strong> ของวันที่ 19/10/2026</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <button type="button" data-ex-id="5" class="btn-run-example flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow-sm transition">
+              🚀 กดทดลองจำลองแบบที่ 5 (ดูเวลาเช้าวันนี้ + เวลาออกเย็นเมื่อวาน)
+            </button>
+            <button type="button" data-ex-dl="5" class="btn-dl-example bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-medium text-xs px-3 py-2 rounded-lg transition">
+              📥 ดาวน์โหลดไฟล์ตัวอย่างแบบที่ 5 (.xlsx)
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <!-- Keeping body closing tag as replacement target -->
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Printing logic
+  const printTable = (filterFn, title) => {
+    const tableHtml = document.querySelector('#viewDaily table').outerHTML;
+    
+    // Check if the table is loaded
+    const originalTbody = document.getElementById('dailyTableBody');
+    if (!originalTbody || originalTbody.children.length === 0) {
+      alert("กรุณาเลือกวันที่และรอให้ตารางโหลดข้อมูลให้เสร็จสิ้นก่อนพิมพ์");
+      return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; padding: 20px; }
+            h2 { text-align: center; font-size: 18px; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; }
+            th { background-color: #f1f5f9; font-weight: bold; }
+            .text-center { text-align: center; }
+            .bg-orange-700 { background-color: #c2410c !important; color: white !important; }
+            .bg-slate-700 { background-color: #334155 !important; color: white !important; }
+            .text-emerald-600 { color: #059669; }
+            .text-amber-600 { color: #d97706; }
+            .text-rose-600 { color: #e11d48; }
+            @media print {
+              @page { size: landscape; margin: 10mm; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>${title}</h2>
+          <div id="table-container"></div>
+        </body>
+      </html>
+    `);
+    
+    // Clone the table structure
+    const tableClone = document.querySelector('#viewDaily table').cloneNode(true);
+    const tbody = tableClone.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    // Get the current selected date for the title
+    const selectedDateStr = document.getElementById('dashDateLabel') ? document.getElementById('dashDateLabel').innerText : '';
+    if (selectedDateStr && selectedDateStr !== '—') {
+        printWindow.document.querySelector('h2').innerText = `${title} ประจำวันที่ ${selectedDateStr}`;
+    }
+    
+    // Filter rows
+    let visibleCount = 0;
+    rows.forEach(row => {
+      // Find the select element for status (cell 4/index 4 in daily table)
+      // Actually, looking at the code, "สถานะรายวัน" is index 4.
+      // Wait, let's look at the generated content. If there's a select, it's manual status.
+      // Otherwise it's text. Let's get text content of the row.
+      
+      const selectStatus = row.querySelector('select.status-select');
+      let statusVal = selectStatus ? selectStatus.value : '';
+      
+      // Let's use the 8th column (index 7) for Morning Status, and 10th column (index 9) for Evening Status
+      const textContent = row.textContent || '';
+      
+      // We will check class names or text for filtering since the JS populates the table dynamically.
+      // "มา" is usually in text-emerald-600 or regular text.
+      // "ไม่มา", "ลา", "ขาด" are in text-rose-600 or orange.
+      
+      // To be safe, we rely on the row text content.
+      if (!filterFn(row, statusVal, textContent)) {
+        row.style.display = 'none';
+      } else {
+        visibleCount++;
+        // If there's a select box, replace it with its text value for printing
+        if (selectStatus) {
+            const selectedText = selectStatus.options[selectStatus.selectedIndex].text;
+            selectStatus.parentNode.innerHTML = `<span style="font-weight:bold;">${selectedText}</span>`;
+        }
+      }
+    });
+    
+    if (visibleCount === 0) {
+       tbody.innerHTML = '<tr><td colspan="14" class="text-center py-4">ไม่พบข้อมูลที่ตรงตามเงื่อนไข</td></tr>';
+    }
+    
+    printWindow.document.getElementById('table-container').appendChild(tableClone);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 800);
+  };
+
+  const btnPrintAll = document.getElementById('btnPrintAll');
+  if (btnPrintAll) {
+    btnPrintAll.addEventListener('click', () => {
+      printTable(() => true, 'รายงานสรุปการมาปฏิบัติงาน (ทั้งหมด)');
+    });
+  }
+
+  const btnPrintPresent = document.getElementById('btnPrintPresent');
+  if (btnPrintPresent) {
+    btnPrintPresent.addEventListener('click', () => {
+      printTable((row, statusVal, text) => {
+         // Present condition: manual status is 'PRESENT' or text contains 'มาทำงาน' / 'มาสาย' / 'เข้า'
+         if (statusVal === 'PRESENT') return true;
+         // In original JS, morning status often contains "เข้า" or "สาย" or "ปกติ"
+         const statusCell = row.cells[7]; // สถานะเช้า
+         const statusText = statusCell ? statusCell.textContent : '';
+         if (statusText.includes('ปกติ') || statusText.includes('สาย')) return true;
+         return false;
+      }, 'รายงานสรุปการมาปฏิบัติงาน (เฉพาะคนมา)');
+    });
+  }
+
+  const btnPrintAbsent = document.getElementById('btnPrintAbsent');
+  if (btnPrintAbsent) {
+    btnPrintAbsent.addEventListener('click', () => {
+      printTable((row, statusVal, text) => {
+         // Absent condition: manual status is not 'PRESENT' and morning status is empty or 'ขาด'
+         if (statusVal && statusVal !== 'PRESENT' && statusVal !== 'ALL') return true;
+         const statusCell = row.cells[7]; // สถานะเช้า
+         const statusText = statusCell ? statusCell.textContent : '';
+         if (statusText.includes('ขาด') || statusText.trim() === '') {
+            // Also check if manual status is not present
+             if (!statusVal || statusVal === 'PRESENT') {
+                 // Wait, if manual status is set to present, they are present.
+                 return false;
+             }
+             return true;
+         }
+         return false;
+      }, 'รายงานสรุปการมาปฏิบัติงาน (เฉพาะคนไม่มา/ลา/ขาด)');
+    });
+  }
+});
+</script>
+</body>
