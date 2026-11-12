@@ -366,7 +366,7 @@
       </div>
       <div class="overflow-x-auto border border-slate-200 rounded-lg">
         <table class="w-full text-xs border-collapse">
-          <thead><tr class="bg-[#1B365D] text-white"><th class="p-2 text-left">สังกัด/กอง</th><th class="p-2 text-right">บุคลากร</th><th class="p-2 text-right">มาปกติ</th><th class="p-2 text-right">มาสาย</th><th class="p-2 text-right">ไม่มา</th><th class="p-2 text-right">ลาป่วย</th><th class="p-2 text-right">ลากิจ</th><th class="p-2 text-right">ลาพักร้อน</th><th class="p-2 text-right">ยังไม่ระบุ</th></tr></thead>
+          <thead><tr class="bg-[#1B365D] text-white"><th class="p-2 text-left">สังกัด/กอง</th><th class="p-2 text-right">บุคลากร</th><th class="p-2 text-right">มาปกติ</th><th class="p-2 text-right">มาสาย</th><th class="p-2 text-right">ไม่มา</th><th class="p-2 text-right">ลาป่วย</th><th class="p-2 text-right">ลากิจ</th><th class="p-2 text-right">ลาพักร้อน</th><th class="p-2 text-right">แสกนไม่ติด</th><th class="p-2 text-right">ยังไม่ระบุ</th></tr></thead>
           <tbody id="monthlyReportDeptBody" class="divide-y divide-slate-200"></tbody>
         </table>
       </div>
@@ -1431,6 +1431,7 @@
             if (saved === "ลาป่วย") row.sick++;
             if (saved === "ลากิจ") row.personal++;
             if (saved === "ลาพักร้อน") row.vacation++;
+            if (saved === "แสกนไม่ติด") row.notscan++;
           } else {
             status = "ยังไม่ระบุ";
             if (datesSet.has(date)) row.unspecified++;
@@ -1452,15 +1453,15 @@
       document.getElementById("monthlyKpiPresent").textContent = sum("present");
       document.getElementById("monthlyKpiLate").textContent = sum("late");
       document.getElementById("monthlyKpiAbsent").textContent = sum("absent");
-      document.getElementById("monthlyKpiLeave").textContent = sum("sick") + sum("personal") + sum("vacation");
+      document.getElementById("monthlyKpiLeave").textContent = sum("sick") + sum("personal") + sum("vacation") + sum("notscan");
       const groups = new Map();
       data.summary.forEach(r=>{
         const dept=r.emp.dept||"ไม่ระบุสังกัด";
-        if(!groups.has(dept)) groups.set(dept,{dept,people:0,normal:0,late:0,absent:0,sick:0,personal:0,vacation:0,unspecified:0});
-        const g=groups.get(dept); g.people++; ["normal","late","absent","sick","personal","vacation","unspecified"].forEach(k=>g[k]+=r[k]);
+        if(!groups.has(dept)) groups.set(dept,{dept,people:0,normal:0,late:0,absent:0,sick:0,personal:0,vacation:0,notscan:0,unspecified:0});
+        const g=groups.get(dept); g.people++; ["normal","late","absent","sick","personal","vacation","notscan","unspecified"].forEach(k=>g[k]+=r[k]);
       });
       const body=document.getElementById("monthlyReportDeptBody");
-      if(body) body.innerHTML=[...groups.values()].sort((a,b)=>a.dept.localeCompare(b.dept,"th")).map(g=>`<tr><td class="p-2 font-semibold">${String(g.dept).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[c]))}</td><td class="p-2 text-right">${g.people}</td><td class="p-2 text-right text-emerald-700">${g.normal}</td><td class="p-2 text-right text-amber-700">${g.late}</td><td class="p-2 text-right text-rose-700">${g.absent}</td><td class="p-2 text-right">${g.sick}</td><td class="p-2 text-right">${g.personal}</td><td class="p-2 text-right">${g.vacation}</td><td class="p-2 text-right text-slate-500">${g.unspecified}</td></tr>`).join("");
+      if(body) body.innerHTML=[...groups.values()].sort((a,b)=>a.dept.localeCompare(b.dept,"th")).map(g=>`<tr><td class="p-2 font-semibold">${String(g.dept).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[c]))}</td><td class="p-2 text-right">${g.people}</td><td class="p-2 text-right text-emerald-700">${g.normal}</td><td class="p-2 text-right text-amber-700">${g.late}</td><td class="p-2 text-right text-rose-700">${g.absent}</td><td class="p-2 text-right">${g.sick}</td><td class="p-2 text-right">${g.personal}</td><td class="p-2 text-right">${g.vacation}</td><td class="p-2 text-right">${g.notscan}</td><td class="p-2 text-right text-slate-500">${g.unspecified}</td></tr>`).join("");
     }
 
     function exportMonthlyReport() {
@@ -1468,12 +1469,12 @@
       const data = getMonthlyReportData(monthInput?.value || new Date().toISOString().slice(0,7));
       const wb = XLSX.utils.book_new();
       const summaryRows = [["ลำดับ","ประเภทบุคลากร","สังกัด/กอง","ชื่อ-นามสกุล","ตำแหน่ง","มาปกติ (วัน)","มาสาย (วัน)","ไม่มา (วัน)","ลาป่วย (วัน)","ลากิจ (วัน)","ลาพักร้อน (วัน)","ยังไม่ระบุสถานะ (วัน)","วันที่มีข้อมูล"]];
-      data.summary.forEach((r,i)=>summaryRows.push([i+1,r.emp.type||"",r.emp.dept||"ไม่ระบุสังกัด",r.emp.fullname,r.emp.pos||"",r.normal,r.late,r.absent,r.sick,r.personal,r.vacation,r.unspecified,r.daysWithData]));
+      data.summary.forEach((r,i)=>summaryRows.push([i+1,r.emp.type||"",r.emp.dept||"ไม่ระบุสังกัด",r.emp.fullname,r.emp.pos||"",r.normal,r.late,r.absent,r.sick,r.personal,r.vacation,r.notscan,r.unspecified,r.daysWithData]));
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(summaryRows),"สรุปรายบุคคล");
       const deptMap = new Map();
-      data.summary.forEach(r=>{const d=r.emp.dept||"ไม่ระบุสังกัด"; if(!deptMap.has(d))deptMap.set(d,{d,people:0,normal:0,late:0,absent:0,sick:0,personal:0,vacation:0,unspecified:0});const g=deptMap.get(d);g.people++;["normal","late","absent","sick","personal","vacation","unspecified"].forEach(k=>g[k]+=r[k]);});
+      data.summary.forEach(r=>{const d=r.emp.dept||"ไม่ระบุสังกัด"; if(!deptMap.has(d))deptMap.set(d,{d,people:0,normal:0,late:0,absent:0,sick:0,personal:0,vacation:0,notscan:0,unspecified:0});const g=deptMap.get(d);g.people++;["normal","late","absent","sick","personal","vacation","notscan","unspecified"].forEach(k=>g[k]+=r[k]);});
       const deptRows=[["สังกัด/กอง","จำนวนบุคลากร","มาปกติ (วัน)","มาสาย (วัน)","ไม่มา (วัน)","ลาป่วย (วัน)","ลากิจ (วัน)","ลาพักร้อน (วัน)","ยังไม่ระบุสถานะ (วัน)"]];
-      [...deptMap.values()].forEach(g=>deptRows.push([g.d,g.people,g.normal,g.late,g.absent,g.sick,g.personal,g.vacation,g.unspecified]));
+      [...deptMap.values()].forEach(g=>deptRows.push([g.d,g.people,g.normal,g.late,g.absent,g.sick,g.personal,g.vacation,g.notscan,g.unspecified]));
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(deptRows),"สรุปแยกตามกอง");
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["วันที่","ชื่อ-นามสกุล","สังกัด/กอง","ประเภทบุคลากร","ตำแหน่ง","สถานะ","เวลาเข้าเช้า"],...data.detail]),"รายละเอียดรายวัน");
       const filename=`รายงานเวลาเข้าออก_รายเดือน_${data.month}.xlsx`;
@@ -1635,7 +1636,6 @@
                   <option value="ลาป่วย" ${e.attendanceStatus === "ลาป่วย" ? "selected" : ""}>ลาป่วย</option>
                   <option value="ลากิจ" ${e.attendanceStatus === "ลากิจ" ? "selected" : ""}>ลากิจ</option>
                   <option value="ลาพักร้อน" ${e.attendanceStatus === "ลาพักร้อน" ? "selected" : ""}>ลาพักร้อน</option>
-                  <option value="สแกนไม่ติด" ${e.attendanceStatus === "สแกนไม่ติด" ? "selected" : ""}>สแกนไม่ติด</option>
                 </select>`}
           </td>
           <td class="p-2 text-slate-600">${e.pos}</td>
